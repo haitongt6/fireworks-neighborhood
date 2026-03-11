@@ -1,0 +1,2 @@
+com/fireworks/admin/FireworksAdminApplication.java
+ com.fireworks.admin.FireworksAdminApplication

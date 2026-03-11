@@ -1,0 +1,7 @@
+dependencies {
+    implementation project(':fireworks-common')
+    implementation project(':fireworks-model')
+
+    // 业务服务通常需要 Spring 基础能力
+    implementation 'org.springframework.boot:spring-boot-starter'
+}

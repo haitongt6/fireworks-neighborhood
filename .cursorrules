@@ -1,0 +1,1 @@
+这是一个基于 JDK 1.8 和 Gradle 的项目，请确保生成的代码符合 Java 8 语法（不要使用 var, record 等），并优先使用 MyBatis-Plus 的 LambdaQuery 风格。

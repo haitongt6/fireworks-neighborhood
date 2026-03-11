@@ -1,0 +1,4 @@
+dependencies {
+    // 在此添加公共工具类等所需依赖
+    // 示例：implementation 'org.springframework:spring-context'
+}
