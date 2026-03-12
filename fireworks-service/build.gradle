@@ -4,7 +4,7 @@ dependencies {
 
     implementation 'org.springframework.boot:spring-boot-starter'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-    implementation 'com.fasterxml.jackson.databind:jackson-databind'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
     // 仅引入 Spring Security Core，提供 UserDetails/UserDetailsService/BCrypt 等接口和工具
     // 不触发 Security 的 Web 自动配置（由 fireworks-admin 负责）
     implementation 'org.springframework.security:spring-security-core'

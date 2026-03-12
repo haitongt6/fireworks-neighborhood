@@ -2,10 +2,12 @@ package com.fireworks.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fireworks.model.UmsAdmin;
+import com.fireworks.model.constant.RedisKeyConstant;
 import com.fireworks.service.UmsAdminService;
 import com.fireworks.service.mapper.UmsAdminMapper;
 import com.fireworks.service.security.AdminUserDetailsService;
 import com.fireworks.service.utils.JwtTokenUtil;
+import com.fireworks.service.utils.RedisUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -13,6 +15,8 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * {@link UmsAdminService} 的实现类。
@@ -72,6 +76,8 @@ public class UmsAdminServiceImpl implements UmsAdminService {
 
         // 4. 生成并返回 JWT Token
         String token = jwtTokenUtil.generateToken(userDetails);
+        // 5. 将用户信息存入redis
+        RedisUtil.set(RedisKeyConstant.USER_INFO_KEY+userDetails.getUsername(),userDetails,30,TimeUnit.MINUTES);
         log.info("管理员 [{}] 登录成功", username);
         return token;
     }

@@ -86,10 +86,10 @@ CREATE TABLE ums_role_permission_relation
 -- ============================================================
 -- 初始化测试数据
 -- 默认管理员账号：admin / 123456
--- 密码 BCrypt 加密值（rounds=10）：$2a$10$NZ5o7r2E.ayT2ZoxgjlI.eJ6OEYqjH7INR/F.mXDbjZJi9HF0YSCW
+-- 密码 BCrypt 加密值（rounds=10，由 BCryptPasswordEncoder 实际生成并验证）
 -- ============================================================
 INSERT INTO ums_admin (username, password, nickname, status, create_time)
-VALUES ('admin', '$2a$10$NZ5o7r2E.ayT2ZoxgjlI.eJ6OEYqjH7INR/F.mXDbjZJi9HF0YSCW', '超级管理员', 1, NOW());
+VALUES ('admin', '$2a$10$CtDBPecYDAXFkA8i3FVkK.s36ZeJcsIQkmK83g6FJo2kzCxrBAV62', '超级管理员', 1, NOW());
 
 INSERT INTO ums_role (name, description, status)
 VALUES ('SUPER_ADMIN', '超级管理员，拥有所有权限', 1);

@@ -1,6 +1,8 @@
 package com.fireworks.admin.config;
 
 import com.fireworks.admin.security.JwtAuthenticationTokenFilter;
+import com.fireworks.admin.security.RestAccessDeniedHandler;
+import com.fireworks.admin.security.RestAuthenticationEntryPoint;
 import com.fireworks.service.security.AdminUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -37,11 +39,17 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     private final AdminUserDetailsService adminUserDetailsService;
     private final JwtAuthenticationTokenFilter jwtAuthenticationTokenFilter;
+    private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
+    private final RestAccessDeniedHandler restAccessDeniedHandler;
 
     public SecurityConfig(AdminUserDetailsService adminUserDetailsService,
-                          JwtAuthenticationTokenFilter jwtAuthenticationTokenFilter) {
+                          JwtAuthenticationTokenFilter jwtAuthenticationTokenFilter,
+                          RestAuthenticationEntryPoint restAuthenticationEntryPoint,
+                          RestAccessDeniedHandler restAccessDeniedHandler) {
         this.adminUserDetailsService = adminUserDetailsService;
         this.jwtAuthenticationTokenFilter = jwtAuthenticationTokenFilter;
+        this.restAuthenticationEntryPoint = restAuthenticationEntryPoint;
+        this.restAccessDeniedHandler = restAccessDeniedHandler;
     }
 
     /**
@@ -105,7 +113,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             .formLogin().disable()
 
             // 禁用 HTTP Basic 认证（改用 JWT Bearer）
-            .httpBasic().disable();
+            .httpBasic().disable()
+
+            .exceptionHandling()
+                .authenticationEntryPoint(restAuthenticationEntryPoint)
+                .accessDeniedHandler(restAccessDeniedHandler);
 
         // 在用户名密码过滤器之前插入 JWT 认证过滤器
         http.addFilterBefore(jwtAuthenticationTokenFilter,

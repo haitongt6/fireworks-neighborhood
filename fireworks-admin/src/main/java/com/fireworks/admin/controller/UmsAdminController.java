@@ -8,10 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -92,4 +89,10 @@ public class UmsAdminController {
             return Result.failed("系统繁忙，请稍后重试");
         }
     }
+
+    @GetMapping("demo")
+    public Result<String> demo() {
+        return Result.success("恭喜你校验成功了");
+    }
+
 }

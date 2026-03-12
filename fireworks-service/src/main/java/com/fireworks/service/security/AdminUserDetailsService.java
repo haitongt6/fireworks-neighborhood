@@ -39,7 +39,7 @@ public class AdminUserDetailsService implements UserDetailsService {
      * 根据用户名加载管理员及其所有权限。
      *
      * @param username 登录用户名
-     * @return {@link AdminUserDetails} 对象
+     * @return {@link com.fireworks.common.api.AdminUserDetails} 对象
      * @throws UsernameNotFoundException 当用户名不存在时抛出，统一返回"用户名或密码错误"避免信息泄露
      */
     @Override
@@ -60,6 +60,6 @@ public class AdminUserDetailsService implements UserDetailsService {
         List<UmsPermission> permissions = umsAdminMapper.selectPermissionByAdminId(admin.getId());
         log.debug("加载管理员 [{}] 成功，拥有权限数量: {}", username, permissions.size());
 
-        return new AdminUserDetails(admin, permissions);
+        return new com.fireworks.common.api.AdminUserDetails(admin, permissions);
     }
 }

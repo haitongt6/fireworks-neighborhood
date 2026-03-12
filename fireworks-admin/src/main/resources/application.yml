@@ -1,31 +1,43 @@
 server:
   port: 8081
 
-# ── DataSource ────────────────────────────────────────────────────────────────
+# ── 日志配置 ──────────────────────────────────────────────────────────────────
+logging:
+  level:
+    com.fireworks: debug
+    org.springframework.security: warn
+    com.baomidou.mybatisplus: debug
+
+# ── 数据源配置 ────────────────────────────────────────────────────────────────
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/fireworks_neighborhood?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false
+    url: jdbc:mysql://localhost:3306/fireworks_neighborhood?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
+  redis:
+    host: 127.0.0.1
+    port: 6379
 
-# ── MyBatis-Plus ──────────────────────────────────────────────────────────────
+# ── MyBatis-Plus 配置 ─────────────────────────────────────────────────────────
 mybatis-plus:
-  # Scan mapper XML files from all JARs on the classpath (including fireworks-service)
+  # 扫描所有 JAR 包（含 fireworks-service 模块）classpath 下的 mapper XML 文件
   mapper-locations: classpath*:mapper/**/*.xml
   configuration:
+    # 开启驼峰命名与下划线字段的自动映射
     map-underscore-to-camel-case: true
   global-config:
     db-config:
+      # 主键策略：数据库自增
       id-type: auto
 
-# ── JWT ───────────────────────────────────────────────────────────────────────
+# ── JWT 配置 ──────────────────────────────────────────────────────────────────
 jwt:
-  # Signing key — replace with a strong random string (64+ chars) in production
+  # 签名密钥，生产环境请替换为 64 位以上的强随机字符串，勿硬编码提交到代码仓库
   secret: fireworks-neighborhood-jwt-secret-key-please-change-in-production
-  # Token expiration in seconds (default: 86400 = 24 hours)
+  # Token 有效期（单位：秒），默认 86400 = 24 小时
   expiration: 86400
-  # Request header that carries the token
+  # 存放 Token 的请求头名称
   tokenHeader: Authorization
-  # Token prefix (note the trailing space)
+  # Token 前缀（注意末尾保留一个空格）
   tokenHead: "Bearer "
