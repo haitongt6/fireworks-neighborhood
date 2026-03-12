@@ -1,4 +1,8 @@
 dependencies {
-    // 在此添加公共工具类等所需依赖
-    // 示例：implementation 'org.springframework:spring-context'
+    implementation project(':fireworks-model')
+    implementation 'org.springframework.security:spring-security-core'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
 }

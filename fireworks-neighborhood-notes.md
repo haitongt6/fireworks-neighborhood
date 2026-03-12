@@ -536,3 +536,612 @@ apply plugin: 'java'
 - Gradle Groovy DSL 在多模块场景下的**通用写法**
 - 在 IDE 中**高效管理多个服务实例**的实践方法。
 
+---
+
+## 七、管理员登录功能（Spring Security + JWT）
+
+> 对应模块：`fireworks-admin`（接入层） + `fireworks-service`（业务层）  
+> 技术栈：Spring Security 5.7 · JJWT 0.9.1 · MyBatis-Plus 3.5.x · BCryptPasswordEncoder
+
+### 7.1 整体认证流程
+
+```
+POST /admin/login
+        │
+        ▼
+UmsAdminController          ← fireworks-admin（接收 JSON 请求体）
+        │ 调用
+        ▼
+UmsAdminServiceImpl         ← fireworks-service（业务逻辑）
+   ├─ AdminUserDetailsService.loadUserByUsername()  查 DB 加载用户+权限
+   ├─ userDetails.isEnabled()                       校验账号状态
+   ├─ BCryptPasswordEncoder.matches()               比对密码
+   └─ JwtTokenUtil.generateToken()                  生成 JWT Token
+        │
+        ▼
+返回 { "tokenHead": "Bearer ", "token": "eyJ..." }
+
+后续请求
+        │  Header: Authorization: Bearer eyJ...
+        ▼
+JwtAuthenticationTokenFilter（OncePerRequestFilter）
+   ├─ 解析 Token → 取出用户名
+   ├─ AdminUserDetailsService.loadUserByUsername()  实时加载权限
+   ├─ JwtTokenUtil.validateToken()                  校验签名+过期
+   └─ 写入 SecurityContextHolder                    标记为已认证
+        │
+        ▼
+目标 Controller 正常执行
+```
+
+### 7.2 数据库表设计（RBAC 模型）
+
+共 5 张表，路径：`doc/sql/fireworks_neighborhood.sql`
+
+| 表名 | 说明 |
+|------|------|
+| `ums_admin` | 管理员账号（id / username / password / status / create_time） |
+| `ums_role` | 角色（id / name / description / status） |
+| `ums_permission` | 权限（id / pid / name / value / icon / type） |
+| `ums_admin_role_relation` | 管理员 ↔ 角色（多对多） |
+| `ums_role_permission_relation` | 角色 ↔ 权限（多对多） |
+
+`ums_permission.value` 字段（如 `pms:product:read`）会被转换为 Spring Security 的 `SimpleGrantedAuthority`，供 `@PreAuthorize` 使用。
+
+### 7.3 新增/更新的 build.gradle 依赖说明
+
+#### `fireworks-model/build.gradle`
+```groovy
+dependencies {
+    implementation 'com.baomidou:mybatis-plus-annotation:3.5.7'  // @TableName、@TableId 等注解
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}
+```
+
+#### `fireworks-service/build.gradle`
+```groovy
+dependencies {
+    implementation project(':fireworks-common')
+    implementation project(':fireworks-model')
+    implementation 'org.springframework.boot:spring-boot-starter'
+    // 只引 security-core，不触发 Security Web 自动配置（由 admin 模块负责）
+    implementation 'org.springframework.security:spring-security-core'
+    implementation 'com.baomidou:mybatis-plus-boot-starter:3.5.7'
+    runtimeOnly 'mysql:mysql-connector-java:8.0.33'
+    implementation 'io.jsonwebtoken:jjwt:0.9.1'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}
+```
+
+#### `fireworks-admin/build.gradle`
+```groovy
+apply plugin: 'org.springframework.boot'
+
+dependencies {
+    implementation project(':fireworks-service')
+    // 下面三行是为了解决 Gradle implementation 编译隔离问题（见 7.6 节）
+    implementation project(':fireworks-common')
+    implementation project(':fireworks-model')
+    implementation 'com.baomidou:mybatis-plus-boot-starter:3.5.7'
+
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+}
+```
+
+### 7.4 关键文件说明
+
+#### 7.4.1 `JwtTokenUtil`（`fireworks-service`）
+
+路径：`fireworks-service/src/main/java/com/fireworks/service/utils/JwtTokenUtil.java`
+
+**核心方法：**
+
+| 方法 | 说明 |
+|------|------|
+| `generateToken(UserDetails)` | 根据用户名生成 JWT，写入 subject + created |
+| `getUsernameFromToken(String)` | 从 Token 解析 subject（用户名），失败返回 null |
+| `validateToken(String, UserDetails)` | 校验签名正确、未过期、用户名一致 |
+| `isTokenExpired(String)` | 判断是否过期，解析失败也视为过期 |
+
+**配置项（application.yml）：**
+
+```yaml
+jwt:
+  secret: xxx          # HS512 签名密钥，生产环境必须替换
+  expiration: 86400    # 有效期（秒），默认 24 小时
+  tokenHeader: Authorization
+  tokenHead: "Bearer "
+```
+
+> **设计原则**：Token 中只存用户名，不存角色/权限。每次请求实时从 DB 加载权限，保证权限变更立即生效。
+
+#### 7.4.2 `AdminUserDetails`（`fireworks-service`）
+
+路径：`fireworks-service/src/main/java/com/fireworks/service/security/AdminUserDetails.java`
+
+实现 `UserDetails`，封装 `UmsAdmin` 实体和权限列表：
+
+```java
+// isEnabled() 对应 ums_admin.status 字段
+public boolean isEnabled() {
+    return umsAdmin.getStatus() != null && umsAdmin.getStatus() == 1;
+}
+
+// getAuthorities() 将 permission.value 转为 GrantedAuthority
+public Collection<? extends GrantedAuthority> getAuthorities() {
+    // 过滤 value 为 null 或空的权限节点（目录节点通常没有 value）
+    ...
+}
+```
+
+#### 7.4.3 `AdminUserDetailsService`（`fireworks-service`）
+
+路径：`fireworks-service/src/main/java/com/fireworks/service/security/AdminUserDetailsService.java`
+
+实现 Spring Security 的 `UserDetailsService`：
+
+```java
+@Override
+public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+    // 1. LambdaQueryWrapper 精确查用户名
+    UmsAdmin admin = umsAdminMapper.selectOne(
+        new LambdaQueryWrapper<UmsAdmin>().eq(UmsAdmin::getUsername, username));
+    if (admin == null) throw new UsernameNotFoundException("用户名或密码错误");
+
+    // 2. 四表联查加载权限
+    List<UmsPermission> permissions = umsAdminMapper.selectPermissionByAdminId(admin.getId());
+    return new AdminUserDetails(admin, permissions);
+}
+```
+
+> **安全细节**：用户名不存在时抛出 `"用户名或密码错误"` 而非 `"用户不存在"`，防止用户枚举攻击。
+
+#### 7.4.4 `UmsAdminMapper.xml`（`fireworks-service`）
+
+路径：`fireworks-service/src/main/resources/mapper/UmsAdminMapper.xml`
+
+权限多表联查 SQL（4 表关联）：
+
+```xml
+<select id="selectPermissionByAdminId" resultType="com.fireworks.model.UmsPermission">
+    SELECT DISTINCT p.id, p.pid, p.name, p.value, p.icon, p.type
+    FROM ums_admin_role_relation arr
+             JOIN ums_role r ON arr.role_id = r.id AND r.status = 1
+             JOIN ums_role_permission_relation rpr ON r.id = rpr.role_id
+             JOIN ums_permission p ON rpr.permission_id = p.id
+    WHERE arr.admin_id = #{adminId}
+</select>
+```
+
+#### 7.4.5 `SecurityConfig`（`fireworks-admin`）
+
+路径：`fireworks-admin/src/main/java/com/fireworks/admin/config/SecurityConfig.java`
+
+继承 `WebSecurityConfigurerAdapter`，关键配置：
+
+```java
+@Override
+protected void configure(HttpSecurity http) throws Exception {
+    http
+        .csrf().disable()                                    // 禁用 CSRF（REST 场景）
+        .sessionManagement()
+            .sessionCreationPolicy(SessionCreationPolicy.STATELESS)  // 禁用 Session
+        .and()
+        .authorizeRequests()
+            .antMatchers(HttpMethod.POST, "/admin/login").permitAll() // 登录接口放行
+            .antMatchers(HttpMethod.OPTIONS).permitAll()              // 预检请求放行
+            .anyRequest().authenticated()                             // 其余需认证
+        .and()
+        .formLogin().disable()
+        .httpBasic().disable();
+
+    // JWT 过滤器插在 UsernamePasswordAuthenticationFilter 之前
+    http.addFilterBefore(jwtAuthenticationTokenFilter,
+            UsernamePasswordAuthenticationFilter.class);
+}
+```
+
+`PasswordEncoder` Bean 定义在此处，供 `UmsAdminServiceImpl` 跨模块注入：
+
+```java
+@Bean
+public PasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
+}
+```
+
+#### 7.4.6 `JwtAuthenticationTokenFilter`（`fireworks-admin`）
+
+路径：`fireworks-admin/src/main/java/com/fireworks/admin/security/JwtAuthenticationTokenFilter.java`
+
+每次请求执行一次（继承 `OncePerRequestFilter`）：
+
+```java
+String authHeader = request.getHeader("Authorization");
+if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
+    String token = authHeader.substring(7);
+    String username = jwtTokenUtil.getUsernameFromToken(token);
+    if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        UserDetails userDetails = adminUserDetailsService.loadUserByUsername(username);
+        if (jwtTokenUtil.validateToken(token, userDetails)) {
+            // 构建认证对象写入 SecurityContext
+            UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+        }
+    }
+}
+filterChain.doFilter(request, response);
+```
+
+#### 7.4.7 `FireworksAdminApplication`（`fireworks-admin`）
+
+路径：`fireworks-admin/src/main/java/com/fireworks/admin/FireworksAdminApplication.java`
+
+```java
+@SpringBootApplication(scanBasePackages = {"com.fireworks.admin", "com.fireworks.service"})
+@MapperScan("com.fireworks.service.mapper")
+public class FireworksAdminApplication { ... }
+```
+
+> **要点**：  
+> - `scanBasePackages` 显式指定扫描路径，确保 `fireworks-service` 中的 `@Service`、`@Component` 被注册。  
+> - `@MapperScan` 指向 service 模块的 Mapper 包，MyBatis-Plus 才能找到接口。
+
+### 7.5 配置文件：从 `.properties` 迁移到 `.yml`
+
+**迁移原因**：`.properties` 文件在 IDEA 中中文注释需要单独配置"Native-to-ASCII"，否则显示乱码；`.yml` 默认 UTF-8，无此问题。
+
+**完整 `application.yml`（`fireworks-admin`）：**
+
+```yaml
+server:
+  port: 8081
+
+# 数据源配置
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/fireworks_neighborhood?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  # 扫描所有 JAR 包（含 fireworks-service 模块）classpath 下的 mapper XML 文件
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+
+# JWT 配置
+jwt:
+  secret: fireworks-neighborhood-jwt-secret-key-please-change-in-production
+  expiration: 86400      # 单位：秒，默认 24 小时
+  tokenHeader: Authorization
+  tokenHead: "Bearer "   # 注意末尾保留空格
+```
+
+> **mapper-locations 说明**：`classpath*:` 会扫描所有 JAR 包的 classpath，`classpath:` 只扫描当前模块。因为 mapper XML 在 `fireworks-service` 的 JAR 里，必须用 `classpath*:`。
+
+### 7.6 ⚠️ 重要：Gradle `implementation` 编译隔离陷阱
+
+这是多模块项目中最容易踩的坑，本项目中连续遇到两次。
+
+#### 原理
+
+Gradle 的 `implementation` 配置是**编译隔离**的：
+
+```
+fireworks-service
+  └── implementation project(':fireworks-common')   ← 对 service 模块编译可见
+  └── implementation 'mybatis-plus-boot-starter'    ← 对 service 模块编译可见
+
+fireworks-admin
+  └── implementation project(':fireworks-service')  ← 只能看到 service 的 API，
+                                                       看不到 service 的 implementation 依赖！
+```
+
+即：**`implementation` 的依赖不会传递给上层消费模块**，消费模块若直接使用这些类，编译期会报红。
+
+与之对比，`api`（需要 `java-library` 插件）会将依赖暴露给上层。
+
+#### 本项目踩坑记录
+
+| 报红内容 | 根本原因 | 修复方式 |
+|---------|---------|---------|
+| `@MapperScan` 找不到 | `mybatis-plus-boot-starter` 在 service 用 `implementation` 引入，admin 看不到 | admin 的 `build.gradle` 补加 `implementation 'com.baomidou:mybatis-plus-boot-starter:3.5.7'` |
+| `Result` 类找不到 | `fireworks-common` 在 service 用 `implementation` 引入，admin 看不到 | admin 的 `build.gradle` 补加 `implementation project(':fireworks-common')` 和 `implementation project(':fireworks-model')` |
+
+#### 规律总结
+
+> `fireworks-admin` 编译期**直接使用**哪个模块的类，就必须在 `fireworks-admin/build.gradle` 中**直接声明**该依赖，不能依赖 `fireworks-service` 的传递。
+
+### 7.7 BCrypt 密码哈希生成问题及解决
+
+#### 问题现象
+
+调用 `POST /admin/login` 接口，账号密码正确但返回"用户名或密码错误"。
+
+#### 根本原因
+
+SQL 初始化脚本中 `123456` 对应的 BCrypt 哈希是**手写的占位值**，并非真实加密结果，导致 `BCryptPasswordEncoder.matches()` 返回 `false`。
+
+#### 解决方式：用测试类生成正确哈希
+
+创建测试类 `fireworks-admin/src/test/java/com/fireworks/admin/GeneratePasswordTest.java`：
+
+```java
+@Test
+public void generateAndVerify() {
+    BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+    String rawPassword = "123456";
+    String hash = encoder.encode(rawPassword);
+    System.out.println("BCrypt哈希: " + hash);
+    System.out.println("验证结果  : " + encoder.matches(rawPassword, hash));
+    System.out.println("UPDATE ums_admin SET password = '" + hash + "' WHERE username = 'admin';");
+}
+```
+
+运行命令：
+
+```bash
+gradle :fireworks-admin:test --tests "com.fireworks.admin.GeneratePasswordTest"
+```
+
+拿到输出的 UPDATE 语句，在数据库中执行即可。
+
+> **重要**：每次调用 `encoder.encode()` 生成的哈希值都不同（BCrypt 内置随机 salt），但 `encoder.matches()` 均能正确验证。直接复制哈希字符串是正确的，不要自己手写。
+
+#### 正确的初始密码哈希（`123456`，已验证）
+
+```sql
+UPDATE ums_admin SET password = '$2a$10$CtDBPecYDAXFkA8i3FVkK.s36ZeJcsIQkmK83g6FJo2kzCxrBAV62' WHERE username = 'admin';
+```
+
+### 7.8 登录接口测试
+
+```bash
+curl -X POST http://localhost:8081/admin/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"123456"}'
+```
+
+成功响应：
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": {
+    "tokenHead": "Bearer ",
+    "token": "eyJhbGciOiJIUzUxMiJ9..."
+  }
+}
+```
+
+后续请求携带 Token：
+
+```bash
+curl http://localhost:8081/some/api \
+  -H "Authorization: Bearer eyJhbGciOiJIUzUxMiJ9..."
+```
+
+---
+
+## 八、从零复盘——管理员登录功能搭建 Checklist
+
+当你想重新练习实现 Spring Security + JWT 登录时，按以下顺序操作：
+
+1. **数据库**：执行 `doc/sql/fireworks_neighborhood.sql`，创建 5 张表并插入测试数据
+2. **实体类**（`fireworks-model`）：`UmsAdmin` / `UmsRole` / `UmsPermission`
+3. **统一响应**（`fireworks-common`）：`Result<T>` 静态工厂方法
+4. **Mapper**（`fireworks-service`）：`UmsAdminMapper` 继承 `BaseMapper` + XML 四表联查权限
+5. **UserDetails**（`fireworks-service`）：`AdminUserDetails` 实现 `UserDetails`
+6. **UserDetailsService**（`fireworks-service`）：`AdminUserDetailsService` 实现 `loadUserByUsername`
+7. **JwtTokenUtil**（`fireworks-service`）：生成 / 解析 / 校验 Token
+8. **Service**（`fireworks-service`）：`UmsAdminServiceImpl.login()` 串联以上组件
+9. **SecurityConfig**（`fireworks-admin`）：放行登录接口，禁 Session，注册 JWT 过滤器
+10. **JwtAuthenticationTokenFilter**（`fireworks-admin`）：每次请求校验 Token 并写入 SecurityContext
+11. **Controller**（`fireworks-admin`）：`POST /admin/login` 返回 Token
+12. **启动类**：添加 `scanBasePackages` + `@MapperScan`
+13. **配置文件**：`application.yml` 补充数据源 + MyBatis-Plus + JWT 配置
+14. **验证依赖**：检查 admin 模块是否直接声明了 `fireworks-common`、`fireworks-model`、`mybatis-plus-boot-starter`
+15. **测试**：生成正确 BCrypt 哈希 → 更新 DB → curl 验证登录
+
+---
+
+## 九、今日补充（2026-03-12）：Redis 会话 + ThreadLocal + 安全响应定制
+
+> 内容：MySQL 连接修复、日志配置、Spring Security 403 流程、自定义 401/403 响应、Redis 集成、登录流程 Redis + ThreadLocal 改造
+
+### 9.1 常见问题与快速修复
+
+#### 9.1.1 MySQL 8.x：`Public Key Retrieval is not allowed`
+
+**现象**：首次连接 MySQL 报错 `SQLNonTransientConnectionException: Public Key Retrieval is not allowed`。
+
+**原因**：MySQL 8 默认使用 `caching_sha2_password`，JDBC 驱动需从服务端获取公钥加密密码，但默认不允许。
+
+**修复**：在 JDBC URL 末尾追加 `&allowPublicKeyRetrieval=true`。
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/fireworks_neighborhood?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+```
+
+#### 9.1.2 控制台无日志输出
+
+**原因**：缺少日志级别配置，`log.debug` 默认不输出。
+
+**修复**：在 `application.yml` 中增加 `logging.level`：
+
+```yaml
+logging:
+  level:
+    com.fireworks: debug
+    org.springframework.security: warn
+    com.baomidou.mybatisplus: debug
+```
+
+#### 9.1.3 Jackson 依赖 groupId 错误
+
+**现象**：`Could not find com.fasterxml.jackson.databind:jackson-databind:.`（版本号为空）。
+
+**原因**：groupId 错误，应为 `com.fasterxml.jackson.core`，不是 `com.fasterxml.jackson.databind`。
+
+**修复**：
+
+```groovy
+implementation 'com.fasterxml.jackson.core:jackson-databind'
+```
+
+### 9.2 Spring Security 请求生命周期与 403 无日志原因
+
+当请求 `GET /admin/demo`（未携带 Token）返回 403 且控制台无输出时，请求在到达 Controller 之前就被 Security 过滤器链拦截：
+
+```
+HTTP 请求
+  → JwtAuthenticationTokenFilter（无 Token 时直接 doFilter，无日志）
+  → FilterSecurityInterceptor（发现未认证，抛 AccessDeniedException）
+  → ExceptionTranslationFilter（委托 AuthenticationEntryPoint 返回 403）
+  → 客户端收到 403，不会进入 Controller
+```
+
+**结论**：`@ExceptionHandler` 捕获不到此类异常，因为异常发生在 DispatcherServlet 之前的过滤器链中。
+
+### 9.3 自定义 401/403 响应（统一 Result 格式）
+
+为替代 Spring Security 默认的 `{"status":403,"error":"Forbidden"}`，需配置自定义处理器：
+
+| 处理器 | 触发场景 | 响应 |
+|--------|----------|------|
+| `AuthenticationEntryPoint` | 未认证（无 Token / Token 无效） | 401 |
+| `AccessDeniedHandler` | 已认证但无权限 | 403 |
+
+**实现要点**：
+
+- 新建 `RestAuthenticationEntryPoint`、`RestAccessDeniedHandler`
+- 使用 `Result.unauthorized()` / `Result.forbidden()` 配合 `ObjectMapper` 写 JSON
+- 在 `SecurityConfig` 中通过 `.exceptionHandling().authenticationEntryPoint(...).accessDeniedHandler(...)` 注册
+
+**注意**：`.httpBasic().disable()` 返回的是 `HttpSecurity`，其后不可再链 `.and()`，应直接接 `.exceptionHandling()`。
+
+### 9.4 Redis 集成
+
+#### 9.4.1 依赖与配置
+
+- **依赖**：在 `fireworks-service/build.gradle` 中增加 `spring-boot-starter-data-redis`
+- **配置**（`fireworks-admin/application.yml`）：
+
+```yaml
+spring:
+  redis:
+    host: 127.0.0.1
+    port: 6378
+    # password 无则省略
+```
+
+#### 9.4.2 RedisConfig（Bean + 序列化）
+
+路径：`fireworks-service/src/main/java/com/fireworks/service/config/RedisConfig.java`
+
+- 定义 `RedisTemplate<String, Object>`
+- Key：`StringRedisSerializer`
+- Value：`Jackson2JsonRedisSerializer`，替代默认 JDK 序列化
+
+#### 9.4.3 RedisUtil（静态方法泛型存取）
+
+路径：`fireworks-service/src/main/java/com/fireworks/service/utils/RedisUtil.java`
+
+- 使用 `@PostConstruct` 将 `StringRedisTemplate` 注入到静态变量
+- 提供静态方法：`set(k,v)`、`set(k,v,timeout,unit)`、`get(k,Class)`、`delete`、`expire` 等
+- 以 JSON 序列化对象，支持泛型反序列化
+
+**使用示例**：
+
+```java
+RedisUtil.set("user:1", userObj);
+RedisUtil.set("token:abc", tokenObj, 30, TimeUnit.MINUTES);
+User user = RedisUtil.get("user:1", User.class);
+```
+
+### 9.5 登录流程 Redis + ThreadLocal 改造
+
+#### 9.5.1 改造目标
+
+- Token 用户信息写入 Redis，支持修改密码后强制下线
+- 请求期间用户信息放入 ThreadLocal，业务层直接使用，无需再查 DB/Redis
+
+#### 9.5.2 改造后的认证流程
+
+```
+登录 POST /admin/login
+  └─ UmsAdminServiceImpl.login()
+       ├─ 校验密码
+       ├─ JwtTokenUtil.generateToken()
+       └─ RedisUtil.set(USER_INFO_KEY + username, AdminUserDetails, 30, MINUTES)
+
+后续请求（带 Token）
+  └─ JwtAuthenticationTokenFilter
+       ├─ 解析 Token 取 username
+       ├─ RedisUtil.get(USER_INFO_KEY + username, AdminUserDetails.class)  ← 不查 DB
+       ├─ Redis 无数据 → 视为会话过期/强制下线，放行后由后续过滤器返回 401
+       ├─ Redis 有数据 → 校验 Token、写入 SecurityContext + UserDetailsThreadLocal
+       ├─ RedisUtil.expire(...) 刷新 TTL（滑动窗口）
+       └─ finally: UserDetailsThreadLocal.removeUserDetails()  ← 防止内存泄漏
+```
+
+#### 9.5.3 关键设计点
+
+| 组件 | 说明 |
+|------|------|
+| `AdminUserDetails` | 移至 `fireworks-common`，需可被 Jackson 反序列化：去掉 `final`、增加无参构造和 setter、`UserDetails` 接口方法加 `@JsonIgnore` |
+| `UserDetailsThreadLocal` | 存储当前请求的用户信息，`setUserDetails` / `getUserDetails` / `removeUserDetails` |
+| `RedisKeyConstant.USER_INFO_KEY` | 如 `user:info:`，与 username 拼接构成 key |
+| JWT 过期 vs Redis TTL | JWT 过期（如 24h）为绝对上限；Redis TTL（如 30min）控制会话活跃期，每次请求刷新 |
+
+#### 9.5.4 强制下线实现
+
+修改密码后执行：
+
+```java
+RedisUtil.delete(RedisKeyConstant.USER_INFO_KEY + username);
+```
+
+下次请求从 Redis 取不到用户即返回 401。
+
+#### 9.5.5 fireworks-common 新增依赖
+
+```groovy
+implementation project(':fireworks-model')
+implementation 'org.springframework.security:spring-security-core'
+implementation 'com.fasterxml.jackson.core:jackson-annotations'
+```
+
+#### 9.5.6 常见坑点（已修复）
+
+1. **ThreadLocal 泄漏**：必须在 `finally` 中调用 `removeUserDetails()`，否则线程池复用会导致数据串请求
+2. **AdminUserDetails 反序列化失败**：不能使用 `final` 字段且必须有空参构造
+3. **`UserDetails.class` 反序列化**：接口无法实例化，应用 `AdminUserDetails.class`
+4. **过滤器仍查 DB**：应从 Redis 读用户信息，否则 Redis 缓存无效
+
+### 9.6 Redis 中未查到用户时的处理方式
+
+当 Redis 中无对应用户时，有两种等价方式，均可得到 401：
+
+| 方式 | 流程 | 特点 |
+|------|------|------|
+| **继续 filterChain.doFilter** | 不设置 SecurityContext → FilterSecurityInterceptor 抛 AccessDeniedException → ExceptionTranslationFilter 委托 AuthenticationEntryPoint → 401 | 符合 Spring Security 默认设计 |
+| **直接抛 AuthenticationException** | 如 `InsufficientAuthenticationException` → ExceptionTranslationFilter 捕获 → AuthenticationEntryPoint → 401 | 语义明确、 fail fast |
+
+两种方式都依赖 `try-finally` 中的 `UserDetailsThreadLocal.removeUserDetails()` 做清理。
+

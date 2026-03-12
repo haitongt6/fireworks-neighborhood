@@ -1,4 +1,6 @@
 dependencies {
-    // 在此添加实体/DTO 等模型类相关依赖
-    // 示例：implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    // MyBatis-Plus 注解（@TableName、@TableId 等），仅需注解包，不引入运行时依赖
+    implementation 'com.baomidou:mybatis-plus-annotation:3.5.7'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
 }

@@ -2,6 +2,19 @@ dependencies {
     implementation project(':fireworks-common')
     implementation project(':fireworks-model')
 
-    // 业务服务通常需要 Spring 基础能力
     implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'com.fasterxml.jackson.databind:jackson-databind'
+    // 仅引入 Spring Security Core，提供 UserDetails/UserDetailsService/BCrypt 等接口和工具
+    // 不触发 Security 的 Web 自动配置（由 fireworks-admin 负责）
+    implementation 'org.springframework.security:spring-security-core'
+    // MyBatis-Plus Spring Boot Starter
+    implementation 'com.baomidou:mybatis-plus-boot-starter:3.5.7'
+    // MySQL JDBC 驱动（运行时）
+    runtimeOnly 'mysql:mysql-connector-java:8.0.33'
+    // JWT 工具库
+    implementation 'io.jsonwebtoken:jjwt:0.9.1'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
 }

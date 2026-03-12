@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.fireworks.service.mapper.UmsAdminMapper">
+
+    <!--
+        通过四表联查获取指定管理员的全部权限。
+        关联链：ums_admin -> ums_admin_role_relation -> ums_role -> ums_role_permission_relation -> ums_permission
+        过滤条件：角色必须处于启用状态（r.status = 1），DISTINCT 去除重复权限。
+    -->
+    <select id="selectPermissionByAdminId" resultType="com.fireworks.model.UmsPermission">
+        SELECT DISTINCT
+            p.id,
+            p.pid,
+            p.name,
+            p.value,
+            p.icon,
+            p.type
+        FROM ums_admin_role_relation arr
+                 JOIN ums_role r ON arr.role_id = r.id AND r.status = 1
+                 JOIN ums_role_permission_relation rpr ON r.id = rpr.role_id
+                 JOIN ums_permission p ON rpr.permission_id = p.id
+        WHERE arr.admin_id = #{adminId}
+    </select>
+
+</mapper>
