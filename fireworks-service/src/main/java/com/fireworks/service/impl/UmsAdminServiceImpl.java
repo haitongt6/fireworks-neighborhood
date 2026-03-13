@@ -1,7 +1,9 @@
 package com.fireworks.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fireworks.model.dto.UmsAdminUpdateParam;
 import com.fireworks.model.pojo.UmsAdmin;
+import com.fireworks.model.vo.UmsAdminWithRolesVO;
 import com.fireworks.model.constant.RedisKeyConstant;
 import com.fireworks.service.UmsAdminService;
 import com.fireworks.service.mapper.UmsAdminMapper;
@@ -16,6 +18,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -136,5 +139,60 @@ public class UmsAdminServiceImpl implements UmsAdminService {
         admin.setPassword(null);
         log.info("超级管理员添加用户成功: username={}", username);
         return admin;
+    }
+
+    @Override
+    public List<UmsAdminWithRolesVO> listAdmins() {
+        List<UmsAdmin> admins = umsAdminMapper.selectList(null);
+        List<UmsAdminWithRolesVO> result = new ArrayList<>(admins.size());
+        for (UmsAdmin admin : admins) {
+            UmsAdminWithRolesVO vo = new UmsAdminWithRolesVO();
+            vo.setId(admin.getId());
+            vo.setUsername(admin.getUsername());
+            vo.setNickname(admin.getNickname());
+            vo.setEmail(admin.getEmail());
+            vo.setStatus(admin.getStatus());
+            vo.setCreateTime(admin.getCreateTime());
+            vo.setRoles(umsAdminMapper.selectRolesByAdminId(admin.getId()));
+            result.add(vo);
+        }
+        return result;
+    }
+
+    @Override
+    public void updateAdmin(Long adminId, UmsAdminUpdateParam param) {
+        if (adminId == null) {
+            throw new IllegalArgumentException("管理员 ID 不能为空");
+        }
+        if (param == null) {
+            throw new IllegalArgumentException("更新参数不能为空");
+        }
+        if (param.getRoleIds() == null || param.getRoleIds().isEmpty()) {
+            throw new IllegalArgumentException("请至少选择一个角色");
+        }
+
+        UmsAdmin admin = umsAdminMapper.selectById(adminId);
+        if (admin == null) {
+            throw new IllegalArgumentException("管理员不存在");
+        }
+
+        if (param.getNickname() != null) {
+            admin.setNickname(param.getNickname().trim());
+        }
+        if (param.getEmail() != null) {
+            admin.setEmail(param.getEmail().trim());
+        }
+        if (param.getStatus() != null) {
+            admin.setStatus(param.getStatus());
+        }
+        umsAdminMapper.updateById(admin);
+
+        umsAdminMapper.deleteAdminRoleRelationByAdminId(adminId);
+        for (Long roleId : param.getRoleIds()) {
+            if (roleId != null) {
+                umsAdminMapper.insertAdminRoleRelation(adminId, roleId);
+            }
+        }
+        log.info("更新管理员成功: adminId={}", adminId);
     }
 }

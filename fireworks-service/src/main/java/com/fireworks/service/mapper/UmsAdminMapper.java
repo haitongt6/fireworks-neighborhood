@@ -3,6 +3,7 @@ package com.fireworks.service.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.fireworks.model.pojo.UmsAdmin;
 import com.fireworks.model.pojo.UmsPermission;
+import com.fireworks.model.pojo.UmsRole;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
@@ -37,4 +38,20 @@ public interface UmsAdminMapper extends BaseMapper<UmsAdmin> {
      * @return 影响行数
      */
     int insertAdminRoleRelation(@Param("adminId") Long adminId, @Param("roleId") Long roleId);
+
+    /**
+     * 查询指定管理员的角色列表。
+     *
+     * @param adminId 管理员 ID
+     * @return 角色列表
+     */
+    List<UmsRole> selectRolesByAdminId(@Param("adminId") Long adminId);
+
+    /**
+     * 删除指定管理员的全部角色关联。
+     *
+     * @param adminId 管理员 ID
+     * @return 影响行数
+     */
+    int deleteAdminRoleRelationByAdminId(@Param("adminId") Long adminId);
 }

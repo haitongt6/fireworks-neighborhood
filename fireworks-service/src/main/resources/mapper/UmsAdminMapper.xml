@@ -29,4 +29,16 @@
         VALUES (#{adminId}, #{roleId})
     </insert>
 
+    <select id="selectRolesByAdminId" resultType="com.fireworks.model.pojo.UmsRole">
+        SELECT r.id, r.name, r.description, r.status
+        FROM ums_admin_role_relation arr
+                 JOIN ums_role r ON arr.role_id = r.id
+        WHERE arr.admin_id = #{adminId}
+    </select>
+
+    <delete id="deleteAdminRoleRelationByAdminId">
+        DELETE FROM ums_admin_role_relation
+        WHERE admin_id = #{adminId}
+    </delete>
+
 </mapper>

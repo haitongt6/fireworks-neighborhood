@@ -105,3 +105,12 @@ VALUES (0, '添加管理员', 'ums:admin:add', 2);
 -- 将 ums:admin:add 权限授予超级管理员角色
 INSERT INTO ums_role_permission_relation (role_id, permission_id)
 VALUES (1, LAST_INSERT_ID());
+
+-- 用户列表、编辑权限
+INSERT INTO ums_permission (pid, name, value, type)
+VALUES (0, '管理员列表', 'ums:admin:list', 2);
+INSERT INTO ums_role_permission_relation (role_id, permission_id) VALUES (1, LAST_INSERT_ID());
+
+INSERT INTO ums_permission (pid, name, value, type)
+VALUES (0, '编辑管理员', 'ums:admin:edit', 2);
+INSERT INTO ums_role_permission_relation (role_id, permission_id) VALUES (1, LAST_INSERT_ID());

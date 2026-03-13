@@ -2,13 +2,18 @@ package com.fireworks.admin.controller;
 
 import com.fireworks.admin.dto.UmsAdminLoginParam;
 import com.fireworks.model.dto.UmsAdminAddParam;
+import com.fireworks.model.dto.UmsAdminUpdateParam;
 import com.fireworks.common.api.Result;
 import com.fireworks.model.pojo.UmsAdmin;
+import com.fireworks.model.pojo.UmsRole;
+import com.fireworks.model.vo.UmsAdminWithRolesVO;
 import com.fireworks.service.UmsAdminService;
+import com.fireworks.service.UmsRoleService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -22,9 +27,11 @@ import java.util.Map;
 public class UmsAdminController {
 
     private final UmsAdminService umsAdminService;
+    private final UmsRoleService umsRoleService;
 
-    public UmsAdminController(UmsAdminService umsAdminService) {
+    public UmsAdminController(UmsAdminService umsAdminService, UmsRoleService umsRoleService) {
         this.umsAdminService = umsAdminService;
+        this.umsRoleService = umsRoleService;
     }
 
     /**
@@ -98,6 +105,47 @@ public class UmsAdminController {
                 param.getRoleIds()
         );
         return Result.success(admin);
+    }
+
+    /**
+     * 获取所有管理员列表（含角色）。
+     * <p>需拥有 {@code ums:admin:list} 权限。</p>
+     *
+     * @return 管理员列表，每条包含角色信息
+     */
+    @GetMapping("/user/list")
+    @PreAuthorize("hasAuthority('ums:admin:list')")
+    public Result<List<UmsAdminWithRolesVO>> listUsers() {
+        List<UmsAdminWithRolesVO> list = umsAdminService.listAdmins();
+        return Result.success(list);
+    }
+
+    /**
+     * 更新管理员（角色、昵称、邮箱、状态）。
+     * <p>需拥有 {@code ums:admin:edit} 权限。用于列表中点击编辑后提交。</p>
+     *
+     * @param adminId 管理员 ID
+     * @param param   更新参数
+     * @return 操作成功
+     */
+    @PutMapping("/user/{adminId}")
+    @PreAuthorize("hasAuthority('ums:admin:edit')")
+    public Result<Void> updateUser(@PathVariable Long adminId,
+                                   @RequestBody UmsAdminUpdateParam param) {
+        umsAdminService.updateAdmin(adminId, param);
+        return Result.success();
+    }
+
+    /**
+     * 获取所有角色列表。
+     * <p>供编辑表单中的角色选择器使用。需拥有 {@code ums:admin:list} 权限。</p>
+     *
+     * @return 角色列表
+     */
+    @GetMapping("/role/list")
+    @PreAuthorize("hasAuthority('ums:admin:list')")
+    public Result<List<UmsRole>> listRoles() {
+        return Result.success(umsRoleService.listRoles());
     }
 
 }

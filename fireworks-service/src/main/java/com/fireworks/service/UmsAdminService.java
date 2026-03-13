@@ -1,6 +1,8 @@
 package com.fireworks.service;
 
+import com.fireworks.model.dto.UmsAdminUpdateParam;
 import com.fireworks.model.pojo.UmsAdmin;
+import com.fireworks.model.vo.UmsAdminWithRolesVO;
 
 import java.util.List;
 
@@ -52,4 +54,20 @@ public interface UmsAdminService {
      */
     UmsAdmin addAdmin(String username, String password, String nickname,
                       String email, Integer status, List<Long> roleIds);
+
+    /**
+     * 获取所有管理员列表（含角色）。
+     *
+     * @return 管理员列表，每条包含角色信息
+     */
+    List<UmsAdminWithRolesVO> listAdmins();
+
+    /**
+     * 更新管理员信息及角色。
+     *
+     * @param adminId 管理员 ID
+     * @param param   更新参数（角色、昵称、邮箱、状态）
+     * @throws IllegalArgumentException 管理员不存在或参数不合法时抛出
+     */
+    void updateAdmin(Long adminId, UmsAdminUpdateParam param);
 }
