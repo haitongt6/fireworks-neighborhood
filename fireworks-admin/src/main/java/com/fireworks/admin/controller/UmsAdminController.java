@@ -1,13 +1,11 @@
 package com.fireworks.admin.controller;
 
 import com.fireworks.admin.dto.UmsAdminLoginParam;
+import com.fireworks.model.dto.UmsAdminAddParam;
 import com.fireworks.common.api.Result;
+import com.fireworks.model.pojo.UmsAdmin;
 import com.fireworks.service.UmsAdminService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.DisabledException;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -17,12 +15,11 @@ import java.util.Map;
  * 后台管理员认证接口。
  *
  * <p>所有接口均返回 {@link Result} 统一响应体，前端根据 {@code code} 字段判断请求结果。</p>
+ * <p>异常由 {@link com.fireworks.admin.handler.GlobalExceptionHandler} 统一拦截处理。</p>
  */
 @RestController
 @RequestMapping("/admin")
 public class UmsAdminController {
-
-    private static final Logger log = LoggerFactory.getLogger(UmsAdminController.class);
 
     private final UmsAdminService umsAdminService;
 
@@ -66,33 +63,41 @@ public class UmsAdminController {
      */
     @PostMapping("/login")
     public Result<Map<String, String>> login(@RequestBody UmsAdminLoginParam loginParam) {
-        try {
-            String token = umsAdminService.login(loginParam.getUsername(), loginParam.getPassword());
+        String token = umsAdminService.login(loginParam.getUsername(), loginParam.getPassword());
 
-            Map<String, String> tokenMap = new HashMap<String, String>(2);
-            tokenMap.put("tokenHead", "Bearer ");
-            tokenMap.put("token", token);
+        Map<String, String> tokenMap = new HashMap<String, String>(2);
+        tokenMap.put("tokenHead", "Bearer ");
+        tokenMap.put("token", token);
 
-            return Result.success(tokenMap);
-
-        } catch (UsernameNotFoundException | BadCredentialsException e) {
-            // 统一返回模糊描述，防止用户枚举攻击
-            log.warn("登录失败 - 用户名或密码错误，username={}", loginParam.getUsername());
-            return Result.failed("用户名或密码错误");
-
-        } catch (DisabledException e) {
-            log.warn("登录失败 - 账号已被禁用，username={}", loginParam.getUsername());
-            return Result.failed(e.getMessage());
-
-        } catch (Exception e) {
-            log.error("登录时发生未知异常，username={}", loginParam.getUsername(), e);
-            return Result.failed("系统繁忙，请稍后重试");
-        }
+        return Result.success(tokenMap);
     }
 
     @GetMapping("demo")
     public Result<String> demo() {
         return Result.success("恭喜你校验成功了");
+    }
+
+    /**
+     * 超级管理员添加用户。
+     * <p>
+     * 需拥有 {@code ums:admin:add} 权限。请求头需携带 {@code Authorization: Bearer <token>}。
+     * </p>
+     *
+     * @param param 添加用户参数（username、password 必填，roleIds 至少一个）
+     * @return 新创建的管理员信息（不含密码）
+     */
+    @PostMapping("/user")
+    @PreAuthorize("hasAuthority('ums:admin:add')")
+    public Result<UmsAdmin> addUser(@RequestBody UmsAdminAddParam param) {
+        UmsAdmin admin = umsAdminService.addAdmin(
+                param.getUsername(),
+                param.getPassword(),
+                param.getNickname(),
+                param.getEmail(),
+                param.getStatus(),
+                param.getRoleIds()
+        );
+        return Result.success(admin);
     }
 
 }

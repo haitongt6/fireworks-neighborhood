@@ -97,3 +97,11 @@ VALUES ('SUPER_ADMIN', '超级管理员，拥有所有权限', 1);
 -- 绑定管理员与角色
 INSERT INTO ums_admin_role_relation (admin_id, role_id)
 VALUES (1, 1);
+
+-- 添加用户管理权限（供超级管理员添加用户接口使用）
+INSERT INTO ums_permission (pid, name, value, type)
+VALUES (0, '添加管理员', 'ums:admin:add', 2);
+
+-- 将 ums:admin:add 权限授予超级管理员角色
+INSERT INTO ums_role_permission_relation (role_id, permission_id)
+VALUES (1, LAST_INSERT_ID());

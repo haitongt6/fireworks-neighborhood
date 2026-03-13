@@ -16,6 +16,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Date;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -91,5 +93,48 @@ public class UmsAdminServiceImpl implements UmsAdminService {
                 new LambdaQueryWrapper<UmsAdmin>()
                         .eq(UmsAdmin::getUsername, username)
         );
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public UmsAdmin addAdmin(String username, String password, String nickname,
+                             String email, Integer status, List<Long> roleIds) {
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException("用户名不能为空");
+        }
+        if (password == null || password.trim().isEmpty()) {
+            throw new IllegalArgumentException("密码不能为空");
+        }
+        if (roleIds == null || roleIds.isEmpty()) {
+            throw new IllegalArgumentException("请至少选择一个角色");
+        }
+
+        UmsAdmin exist = getAdminByUsername(username);
+        if (exist != null) {
+            throw new IllegalArgumentException("用户名已存在");
+        }
+
+        UmsAdmin admin = new UmsAdmin();
+        admin.setUsername(username.trim());
+        admin.setPassword(passwordEncoder.encode(password));
+        admin.setNickname(nickname != null ? nickname.trim() : null);
+        admin.setEmail(email != null ? email.trim() : null);
+        admin.setStatus(status != null ? status : 1);
+        admin.setCreateTime(new Date());
+
+        umsAdminMapper.insert(admin);
+        Long adminId = admin.getId();
+
+        for (Long roleId : roleIds) {
+            if (roleId != null) {
+                umsAdminMapper.insertAdminRoleRelation(adminId, roleId);
+            }
+        }
+
+        admin.setPassword(null);
+        log.info("超级管理员添加用户成功: username={}", username);
+        return admin;
     }
 }

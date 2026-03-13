@@ -28,4 +28,13 @@ public interface UmsAdminMapper extends BaseMapper<UmsAdmin> {
      * @return 权限列表，不含重复项
      */
     List<UmsPermission> selectPermissionByAdminId(@Param("adminId") Long adminId);
+
+    /**
+     * 插入管理员-角色关联记录。
+     *
+     * @param adminId 管理员 ID
+     * @param roleId  角色 ID
+     * @return 影响行数
+     */
+    int insertAdminRoleRelation(@Param("adminId") Long adminId, @Param("roleId") Long roleId);
 }

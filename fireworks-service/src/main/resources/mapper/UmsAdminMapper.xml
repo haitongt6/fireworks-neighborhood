@@ -24,4 +24,9 @@
         WHERE arr.admin_id = #{adminId}
     </select>
 
+    <insert id="insertAdminRoleRelation">
+        INSERT INTO ums_admin_role_relation (admin_id, role_id)
+        VALUES (#{adminId}, #{roleId})
+    </insert>
+
 </mapper>
