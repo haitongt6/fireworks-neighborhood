@@ -1,7 +1,7 @@
 package com.fireworks.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.fireworks.model.UmsAdmin;
+import com.fireworks.model.pojo.UmsAdmin;
 import com.fireworks.model.constant.RedisKeyConstant;
 import com.fireworks.service.UmsAdminService;
 import com.fireworks.service.mapper.UmsAdminMapper;

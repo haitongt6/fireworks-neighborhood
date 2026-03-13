@@ -1,8 +1,8 @@
 package com.fireworks.service.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.fireworks.model.UmsAdmin;
-import com.fireworks.model.UmsPermission;
+import com.fireworks.model.pojo.UmsAdmin;
+import com.fireworks.model.pojo.UmsPermission;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;

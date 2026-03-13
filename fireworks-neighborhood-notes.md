@@ -708,7 +708,7 @@ public UserDetails loadUserByUsername(String username) throws UsernameNotFoundEx
 权限多表联查 SQL（4 表关联）：
 
 ```xml
-<select id="selectPermissionByAdminId" resultType="com.fireworks.model.UmsPermission">
+<select id="selectPermissionByAdminId" resultType="com.fireworks.model.pojo.UmsPermission">
     SELECT DISTINCT p.id, p.pid, p.name, p.value, p.icon, p.type
     FROM ums_admin_role_relation arr
              JOIN ums_role r ON arr.role_id = r.id AND r.status = 1

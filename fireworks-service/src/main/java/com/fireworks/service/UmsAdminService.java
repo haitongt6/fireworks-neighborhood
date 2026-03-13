@@ -1,6 +1,6 @@
 package com.fireworks.service;
 
-import com.fireworks.model.UmsAdmin;
+import com.fireworks.model.pojo.UmsAdmin;
 
 /**
  * 后台管理员业务接口。

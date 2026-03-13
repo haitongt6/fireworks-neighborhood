@@ -1,8 +1,8 @@
 package com.fireworks.service.security;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.fireworks.model.UmsAdmin;
-import com.fireworks.model.UmsPermission;
+import com.fireworks.model.pojo.UmsAdmin;
+import com.fireworks.model.pojo.UmsPermission;
 import com.fireworks.service.mapper.UmsAdminMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

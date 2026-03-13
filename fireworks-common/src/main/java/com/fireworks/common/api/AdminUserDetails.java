@@ -2,8 +2,8 @@ package com.fireworks.common.api;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fireworks.model.UmsAdmin;
-import com.fireworks.model.UmsPermission;
+import com.fireworks.model.pojo.UmsAdmin;
+import com.fireworks.model.pojo.UmsPermission;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;

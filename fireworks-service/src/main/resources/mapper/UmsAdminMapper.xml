@@ -9,7 +9,7 @@
         关联链：ums_admin -> ums_admin_role_relation -> ums_role -> ums_role_permission_relation -> ums_permission
         过滤条件：角色必须处于启用状态（r.status = 1），DISTINCT 去除重复权限。
     -->
-    <select id="selectPermissionByAdminId" resultType="com.fireworks.model.UmsPermission">
+    <select id="selectPermissionByAdminId" resultType="com.fireworks.model.pojo.UmsPermission">
         SELECT DISTINCT
             p.id,
             p.pid,
