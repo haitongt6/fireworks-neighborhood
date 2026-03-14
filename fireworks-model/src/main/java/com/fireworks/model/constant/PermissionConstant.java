@@ -47,4 +47,22 @@ public final class PermissionConstant {
     public static final String BUTTON_EDIT = "ums:button:edit";
     /** 删除按钮 */
     public static final String BUTTON_DELETE = "ums:button:delete";
+
+    // ---------- 商品 ----------
+    /** 商品列表 */
+    public static final String PRODUCT_LIST = "pms:product:list";
+    /** 新增商品 */
+    public static final String PRODUCT_ADD = "pms:product:add";
+    /** 编辑商品 */
+    public static final String PRODUCT_EDIT = "pms:product:edit";
+
+    // ---------- 商品类目 ----------
+    /** 类目列表 */
+    public static final String CATEGORY_LIST = "pms:category:list";
+    /** 新增类目 */
+    public static final String CATEGORY_ADD = "pms:category:add";
+    /** 编辑类目 */
+    public static final String CATEGORY_EDIT = "pms:category:edit";
+    /** 删除类目 */
+    public static final String CATEGORY_DELETE = "pms:category:delete";
 }

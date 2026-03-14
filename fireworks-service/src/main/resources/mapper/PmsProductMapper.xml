@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.fireworks.service.mapper.PmsProductMapper">
+
+    <select id="selectProductListPage" resultType="com.fireworks.model.vo.PmsProductListVO">
+        SELECT
+            p.id,
+            p.title,
+            p.sub_title AS subTitle,
+            p.category_id AS categoryId,
+            c.name AS categoryName,
+            p.images AS images,
+            p.price,
+            IFNULL(SUM(s.stock), 0) AS stock,
+            p.status,
+            p.sort,
+            p.create_time AS createTime,
+            p.update_time AS updateTime
+        FROM pms_product p
+        LEFT JOIN pms_product_category c ON p.category_id = c.id
+        LEFT JOIN pms_product_sku s ON s.product_id = p.id
+        <where>
+            <if test="param.productId != null">
+                AND p.id = #{param.productId}
+            </if>
+            <if test="param.keyword != null and param.keyword != ''">
+                AND p.title LIKE CONCAT('%', #{param.keyword}, '%')
+            </if>
+            <if test="param.categoryId != null">
+                AND p.category_id = #{param.categoryId}
+            </if>
+            <if test="param.status != null">
+                AND p.status = #{param.status}
+            </if>
+            <if test="param.priceMin != null">
+                AND p.price &gt;= #{param.priceMin}
+            </if>
+            <if test="param.priceMax != null">
+                AND p.price &lt;= #{param.priceMax}
+            </if>
+            <if test="param.createTimeStart != null and param.createTimeStart != ''">
+                AND p.create_time &gt;= CONCAT(#{param.createTimeStart}, ' 00:00:00')
+            </if>
+            <if test="param.createTimeEnd != null and param.createTimeEnd != ''">
+                AND p.create_time &lt;= CONCAT(#{param.createTimeEnd}, ' 23:59:59')
+            </if>
+        </where>
+        GROUP BY p.id, p.title, p.sub_title, p.category_id, c.name, p.images, p.price, p.status, p.sort, p.create_time, p.update_time
+        ORDER BY p.create_time DESC
+    </select>
+
+</mapper>

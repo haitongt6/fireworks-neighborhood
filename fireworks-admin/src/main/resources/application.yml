@@ -5,8 +5,11 @@ server:
 logging:
   level:
     com.fireworks: debug
-    org.springframework.security: warn
+    org.springframework.security: debug
     com.baomidou.mybatisplus: debug
+    org.springframework.security.web.access: TRACE
+
+
 
 # ── 数据源配置 ────────────────────────────────────────────────────────────────
 spring:
@@ -36,6 +39,10 @@ mybatis-plus:
     db-config:
       # 主键策略：数据库自增
       id-type: auto
+
+# ── 文件上传存储路径 ───────────────────────────────────────────────────────────
+file:
+  upload-dir: D:/fireworks -neighborhood-file   # 主图、视频、详情图根目录
 
 # ── JWT 配置 ──────────────────────────────────────────────────────────────────
 jwt:
