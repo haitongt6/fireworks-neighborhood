@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.fireworks.service.mapper.UmsRoleMapper">
+
+    <select id="selectPermissionsByRoleId" resultType="com.fireworks.model.pojo.UmsPermission">
+        SELECT p.id, p.pid, p.name, p.value, p.icon, p.type
+        FROM ums_role_permission_relation rpr
+                 JOIN ums_permission p ON rpr.permission_id = p.id
+        WHERE rpr.role_id = #{roleId}
+    </select>
+
+    <insert id="insertRolePermissionRelation">
+        INSERT INTO ums_role_permission_relation (role_id, permission_id)
+        VALUES (#{roleId}, #{permissionId})
+    </insert>
+
+    <delete id="deleteRolePermissionRelationByRoleId">
+        DELETE FROM ums_role_permission_relation
+        WHERE role_id = #{roleId}
+    </delete>
+
+    <delete id="deleteAdminRoleRelationByRoleId">
+        DELETE FROM ums_admin_role_relation
+        WHERE role_id = #{roleId}
+    </delete>
+</mapper>
