@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fireworks.model.pojo.UmsAdmin;
 import com.fireworks.model.pojo.UmsPermission;
+import com.fireworks.model.pojo.UmsRole;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -29,15 +30,26 @@ public class AdminUserDetails implements UserDetails {
 
     private UmsAdmin umsAdmin;
     private List<UmsPermission> permissionList;
+    private List<UmsRole> roleList;
 
     /** Jackson 反序列化专用 */
     public AdminUserDetails() {
         this.permissionList = new ArrayList<UmsPermission>();
+        this.roleList = new ArrayList<UmsRole>();
     }
 
     public AdminUserDetails(UmsAdmin umsAdmin, List<UmsPermission> permissionList) {
+        this(umsAdmin, permissionList, roleListOrDefault(null));
+    }
+
+    private static List<UmsRole> roleListOrDefault(List<UmsRole> roleList) {
+        return roleList == null ? new ArrayList<UmsRole>() : roleList;
+    }
+
+    public AdminUserDetails(UmsAdmin umsAdmin, List<UmsPermission> permissionList, List<UmsRole> roleList) {
         this.umsAdmin = umsAdmin;
         this.permissionList = permissionList == null ? new ArrayList<UmsPermission>() : permissionList;
+        this.roleList = roleListOrDefault(roleList);
     }
 
     public UmsAdmin getUmsAdmin() {
@@ -56,14 +68,25 @@ public class AdminUserDetails implements UserDetails {
         this.permissionList = permissionList;
     }
 
+    public List<UmsRole> getRoleList() {
+        return roleList;
+    }
+
+    public void setRoleList(List<UmsRole> roleList) {
+        this.roleList = roleList;
+    }
+
     @JsonIgnore
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         List<SimpleGrantedAuthority> authorities = new ArrayList<SimpleGrantedAuthority>();
         for (UmsPermission permission : permissionList) {
-            String value = permission.getValue();
-            if (value != null && !value.trim().isEmpty()) {
-                authorities.add(new SimpleGrantedAuthority(value));
+            // 仅将 type=2（按钮）加入权限，菜单节点不参与鉴权
+            if (permission.getType() != null && permission.getType() == 2) {
+                String value = permission.getValue();
+                if (value != null && !value.trim().isEmpty()) {
+                    authorities.add(new SimpleGrantedAuthority(value));
+                }
             }
         }
         return authorities;

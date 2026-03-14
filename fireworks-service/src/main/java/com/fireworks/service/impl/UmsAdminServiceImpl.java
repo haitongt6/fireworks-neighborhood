@@ -1,15 +1,18 @@
 package com.fireworks.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fireworks.model.dto.ProfileUpdateParam;
 import com.fireworks.model.dto.UmsAdminUpdateParam;
 import com.fireworks.model.pojo.UmsAdmin;
 import com.fireworks.model.vo.UmsAdminWithRolesVO;
 import com.fireworks.model.constant.RedisKeyConstant;
+import com.fireworks.service.utils.RedisUtil;
+import com.fireworks.model.pojo.UmsRole;
 import com.fireworks.service.UmsAdminService;
 import com.fireworks.service.mapper.UmsAdminMapper;
+import com.fireworks.service.mapper.UmsRoleMapper;
 import com.fireworks.service.security.AdminUserDetailsService;
 import com.fireworks.service.utils.JwtTokenUtil;
-import com.fireworks.service.utils.RedisUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -37,16 +40,21 @@ public class UmsAdminServiceImpl implements UmsAdminService {
 
     private static final Logger log = LoggerFactory.getLogger(UmsAdminServiceImpl.class);
 
+    private static final String SUPER_ADMIN = "SUPER_ADMIN";
+
     private final UmsAdminMapper umsAdminMapper;
+    private final UmsRoleMapper umsRoleMapper;
     private final AdminUserDetailsService adminUserDetailsService;
     private final JwtTokenUtil jwtTokenUtil;
     private final PasswordEncoder passwordEncoder;
 
     public UmsAdminServiceImpl(UmsAdminMapper umsAdminMapper,
+                               UmsRoleMapper umsRoleMapper,
                                AdminUserDetailsService adminUserDetailsService,
                                JwtTokenUtil jwtTokenUtil,
                                PasswordEncoder passwordEncoder) {
         this.umsAdminMapper = umsAdminMapper;
+        this.umsRoleMapper = umsRoleMapper;
         this.adminUserDetailsService = adminUserDetailsService;
         this.jwtTokenUtil = jwtTokenUtil;
         this.passwordEncoder = passwordEncoder;
@@ -113,6 +121,7 @@ public class UmsAdminServiceImpl implements UmsAdminService {
         if (roleIds == null || roleIds.isEmpty()) {
             throw new IllegalArgumentException("请至少选择一个角色");
         }
+        rejectSuperAdminRole(roleIds);
 
         UmsAdmin exist = getAdminByUsername(username);
         if (exist != null) {
@@ -170,6 +179,7 @@ public class UmsAdminServiceImpl implements UmsAdminService {
         if (param.getRoleIds() == null || param.getRoleIds().isEmpty()) {
             throw new IllegalArgumentException("请至少选择一个角色");
         }
+        rejectSuperAdminRole(param.getRoleIds());
 
         UmsAdmin admin = umsAdminMapper.selectById(adminId);
         if (admin == null) {
@@ -185,6 +195,9 @@ public class UmsAdminServiceImpl implements UmsAdminService {
         if (param.getStatus() != null) {
             admin.setStatus(param.getStatus());
         }
+        if (param.getPassword() != null && !param.getPassword().trim().isEmpty()) {
+            admin.setPassword(passwordEncoder.encode(param.getPassword().trim()));
+        }
         umsAdminMapper.updateById(admin);
 
         umsAdminMapper.deleteAdminRoleRelationByAdminId(adminId);
@@ -193,6 +206,77 @@ public class UmsAdminServiceImpl implements UmsAdminService {
                 umsAdminMapper.insertAdminRoleRelation(adminId, roleId);
             }
         }
+        boolean passwordChanged = param.getPassword() != null && !param.getPassword().trim().isEmpty();
+        boolean disabled = Integer.valueOf(0).equals(param.getStatus());
+        if (passwordChanged || disabled) {
+            RedisUtil.delete(RedisKeyConstant.USER_INFO_KEY + admin.getUsername());
+            log.info("管理员 [{}] 密码已修改或已禁用，已清除会话: adminId={}", admin.getUsername(), adminId);
+        }
         log.info("更新管理员成功: adminId={}", adminId);
+    }
+
+    @Override
+    public void deleteAdmin(Long adminId) {
+        if (adminId == null) {
+            throw new IllegalArgumentException("管理员 ID 不能为空");
+        }
+        UmsAdmin admin = umsAdminMapper.selectById(adminId);
+        if (admin == null) {
+            throw new IllegalArgumentException("管理员不存在");
+        }
+        List<UmsRole> roles = umsAdminMapper.selectRolesByAdminId(adminId);
+        for (UmsRole role : roles) {
+            if (role != null && SUPER_ADMIN.equals(role.getName())) {
+                throw new IllegalArgumentException("超级管理员不允许删除");
+            }
+        }
+        umsAdminMapper.deleteAdminRoleRelationByAdminId(adminId);
+        umsAdminMapper.deleteById(adminId);
+        log.info("删除管理员成功: adminId={}", adminId);
+    }
+
+    @Override
+    public UmsAdmin getAdminById(Long adminId) {
+        if (adminId == null) return null;
+        UmsAdmin admin = umsAdminMapper.selectById(adminId);
+        if (admin != null) admin.setPassword(null);
+        return admin;
+    }
+
+    @Override
+    public void logout(String username) {
+        if (username != null && !username.trim().isEmpty()) {
+            RedisUtil.delete(RedisKeyConstant.USER_INFO_KEY + username);
+            log.info("管理员 [{}] 已登出", username);
+        }
+    }
+
+    @Override
+    public void updateProfile(Long adminId, ProfileUpdateParam param) {
+        if (adminId == null || param == null) return;
+        UmsAdmin admin = umsAdminMapper.selectById(adminId);
+        if (admin == null) return;
+        if (param.getNickname() != null) {
+            admin.setNickname(param.getNickname().trim());
+        }
+        if (param.getEmail() != null) {
+            admin.setEmail(param.getEmail().trim());
+        }
+        if (param.getPassword() != null && !param.getPassword().trim().isEmpty()) {
+            admin.setPassword(passwordEncoder.encode(param.getPassword().trim()));
+            RedisUtil.delete(RedisKeyConstant.USER_INFO_KEY + admin.getUsername());
+            log.info("管理员 [{}] 修改密码，已清除会话", admin.getUsername());
+        }
+        umsAdminMapper.updateById(admin);
+    }
+
+    private void rejectSuperAdminRole(List<Long> roleIds) {
+        for (Long roleId : roleIds) {
+            if (roleId == null) continue;
+            UmsRole role = umsRoleMapper.selectById(roleId);
+            if (role != null && SUPER_ADMIN.equals(role.getName())) {
+                throw new IllegalArgumentException("不支持新增或分配超级管理员角色");
+            }
+        }
     }
 }

@@ -23,6 +23,8 @@ public final class PermissionConstant {
     public static final String ADMIN_LIST = "ums:admin:list";
     /** 编辑管理员 */
     public static final String ADMIN_EDIT = "ums:admin:edit";
+    /** 删除管理员 */
+    public static final String ADMIN_DELETE = "ums:admin:delete";
 
     // ---------- 角色 ----------
     /** 角色列表 */
@@ -33,4 +35,16 @@ public final class PermissionConstant {
     public static final String ROLE_EDIT = "ums:role:edit";
     /** 删除角色 */
     public static final String ROLE_DELETE = "ums:role:delete";
+
+    // ---------- 菜单管理 ----------
+    /** 菜单列表 */
+    public static final String MENU_LIST = "ums:menu:list";
+
+    // ---------- 按钮权限（菜单下的按钮 CRUD）----------
+    /** 新增按钮 */
+    public static final String BUTTON_ADD = "ums:button:add";
+    /** 编辑按钮 */
+    public static final String BUTTON_EDIT = "ums:button:edit";
+    /** 删除按钮 */
+    public static final String BUTTON_DELETE = "ums:button:delete";
 }

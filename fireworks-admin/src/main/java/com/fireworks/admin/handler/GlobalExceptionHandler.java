@@ -3,10 +3,13 @@ package com.fireworks.admin.handler;
 import com.fireworks.common.api.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
@@ -14,6 +17,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * <p>
  * 统一捕获 Controller 层抛出的异常，转换为 {@link Result} 响应返回。
  * Controller 不再需要 try-catch，由 Service 抛出业务异常，此处统一处理。
+ * </p>
+ * <p>
+ * 注意：{@link AccessDeniedException} 来自 @PreAuthorize 方法级权限校验失败，
+ * 在 DispatcherServlet/MVC 层抛出，由本类捕获。而 RestAccessDeniedHandler 仅处理
+ * 过滤器层的 URL 级鉴权失败，两者触发场景不同。
  * </p>
  */
 @RestControllerAdvice
@@ -38,6 +46,20 @@ public class GlobalExceptionHandler {
     public Result<?> handleDisabledException(DisabledException e) {
         log.warn("登录失败 - 账号已被禁用: {}", e.getMessage());
         return Result.failed(e.getMessage());
+    }
+
+    /**
+     * 方法级权限不足（@PreAuthorize 校验失败）。
+     * <p>
+     * 该方法级权限在 Controller 方法调用前由 Spring AOP 校验，异常在 MVC 层抛出，
+     * 故由本类捕获，不会走 RestAccessDeniedHandler。
+     * </p>
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public Result<?> handleAccessDeniedException(AccessDeniedException e) {
+        log.warn("权限不足: {}", e.getMessage());
+        return Result.forbidden("权限不足，禁止访问");
     }
 
     /**

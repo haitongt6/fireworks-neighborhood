@@ -103,8 +103,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             .authorizeRequests()
                 // 管理员登录接口放行
                 .antMatchers(HttpMethod.POST, "/admin/login").permitAll()
+                .antMatchers(HttpMethod.GET, "/admin/publicKey").permitAll()
                 // 跨域预检请求放行
                 .antMatchers(HttpMethod.OPTIONS).permitAll()
+                //为了校验 com.fireworks.admin.security.RestAccessDeniedHandler 自定义无权限（403）处理器生否生效，该鉴权过程是在过滤器里，比@PreAuthorize鉴权的执行顺序靠前
+                .antMatchers(HttpMethod.GET,"/admin/test").hasAuthority("ums:admin:tht")
                 // 其余接口一律需要认证
                 .anyRequest().authenticated()
             .and()

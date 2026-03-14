@@ -1,5 +1,6 @@
 package com.fireworks.service;
 
+import com.fireworks.model.dto.ProfileUpdateParam;
 import com.fireworks.model.dto.UmsAdminUpdateParam;
 import com.fireworks.model.pojo.UmsAdmin;
 import com.fireworks.model.vo.UmsAdminWithRolesVO;
@@ -38,6 +39,14 @@ public interface UmsAdminService {
     UmsAdmin getAdminByUsername(String username);
 
     /**
+     * 根据 ID 查询管理员信息（不含密码）。
+     *
+     * @param adminId 管理员 ID
+     * @return {@link UmsAdmin} 实体；不存在时返回 {@code null}
+     */
+    UmsAdmin getAdminById(Long adminId);
+
+    /**
      * 超级管理员添加用户。
      * <p>
      * 密码使用 BCrypt 加密后入库，同时建立管理员与角色的关联关系。
@@ -70,4 +79,28 @@ public interface UmsAdminService {
      * @throws IllegalArgumentException 管理员不存在或参数不合法时抛出
      */
     void updateAdmin(Long adminId, UmsAdminUpdateParam param);
+
+    /**
+     * 删除管理员。
+     *
+     * @param adminId 管理员 ID
+     * @throws IllegalArgumentException 管理员不存在或为超级管理员时抛出
+     */
+    void deleteAdmin(Long adminId);
+
+    /**
+     * 登出。清除 Redis 中的会话，使 Token 立即失效。
+     *
+     * @param username 登录用户名
+     */
+    void logout(String username);
+
+    /**
+     * 更新当前用户个人信息（昵称、邮箱、密码）。
+     * <p>密码修改后会清除 Redis 会话，需重新登录。</p>
+     *
+     * @param adminId 当前管理员 ID
+     * @param param   更新参数
+     */
+    void updateProfile(Long adminId, ProfileUpdateParam param);
 }

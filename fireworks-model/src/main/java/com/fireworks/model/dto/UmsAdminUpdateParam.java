@@ -13,6 +13,9 @@ public class UmsAdminUpdateParam {
     /** 角色 ID 列表 */
     private List<Long> roleIds;
 
+    /** 新密码（可选）。仅当前用户修改自己或超级管理员修改任意用户时可生效 */
+    private String password;
+
     /** 显示昵称 */
     private String nickname;
 

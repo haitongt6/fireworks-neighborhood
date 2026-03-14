@@ -13,6 +13,8 @@ dependencies {
     // @MapperScan 注解来自 mybatis-spring，fireworks-service 通过 implementation 引入不向上传递编译期依赖
     // 因此 fireworks-admin 需要直接声明，确保编译期可见
     implementation 'com.baomidou:mybatis-plus-boot-starter:3.5.7'
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-mysql'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

@@ -21,6 +21,11 @@
         WHERE role_id = #{roleId}
     </delete>
 
+    <delete id="deleteRolePermissionRelationByPermissionId">
+        DELETE FROM ums_role_permission_relation
+        WHERE permission_id = #{permissionId}
+    </delete>
+
     <delete id="deleteAdminRoleRelationByRoleId">
         DELETE FROM ums_admin_role_relation
         WHERE role_id = #{roleId}

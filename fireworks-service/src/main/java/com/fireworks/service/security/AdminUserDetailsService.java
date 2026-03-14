@@ -1,9 +1,12 @@
 package com.fireworks.service.security;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fireworks.common.api.util.UserRoleUtil;
 import com.fireworks.model.pojo.UmsAdmin;
 import com.fireworks.model.pojo.UmsPermission;
+import com.fireworks.model.pojo.UmsRole;
 import com.fireworks.service.mapper.UmsAdminMapper;
+import com.fireworks.service.mapper.UmsPermissionMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -27,12 +30,16 @@ import java.util.List;
 @Service
 public class AdminUserDetailsService implements UserDetailsService {
 
+
+
     private static final Logger log = LoggerFactory.getLogger(AdminUserDetailsService.class);
 
     private final UmsAdminMapper umsAdminMapper;
+    private final UmsPermissionMapper umsPermissionMapper;
 
-    public AdminUserDetailsService(UmsAdminMapper umsAdminMapper) {
+    public AdminUserDetailsService(UmsAdminMapper umsAdminMapper, UmsPermissionMapper umsPermissionMapper) {
         this.umsAdminMapper = umsAdminMapper;
+        this.umsPermissionMapper = umsPermissionMapper;
     }
 
     /**
@@ -56,10 +63,21 @@ public class AdminUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException("用户名或密码错误");
         }
 
-        // 2. 查询该管理员经角色关联获得的所有权限
+        // 2. 查询该管理员经角色关联获得的所有权限及角色
         List<UmsPermission> permissions = umsAdminMapper.selectPermissionByAdminId(admin.getId());
-        log.debug("加载管理员 [{}] 成功，拥有权限数量: {}", username, permissions.size());
+        List<UmsRole> roles = umsAdminMapper.selectRolesByAdminId(admin.getId());
 
-        return new com.fireworks.common.api.AdminUserDetails(admin, permissions);
+        // 3. 超级管理员（启用状态）从 DB 动态加载全部权限，避免硬编码
+        if (UserRoleUtil.isSuperAdminEnabled(roles)) {
+            permissions = umsPermissionMapper.selectList(
+                    new LambdaQueryWrapper<UmsPermission>().orderByAsc(UmsPermission::getId));
+            log.debug("超级管理员 [{}] 使用全部权限，权限数: {}", username, permissions.size());
+        } else {
+            log.debug("加载管理员 [{}] 成功，权限数: {}, 角色数: {}", username, permissions.size(), roles != null ? roles.size() : 0);
+        }
+
+        return new com.fireworks.common.api.AdminUserDetails(admin, permissions, roles);
     }
+
+
 }
