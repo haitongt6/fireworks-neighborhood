@@ -20,5 +20,10 @@ public interface UmsRoleMapper extends BaseMapper<UmsRole> {
 
     int deleteRolePermissionRelationByPermissionId(@Param("permissionId") Long permissionId);
 
+    /**
+     * 检查角色是否已拥有某权限。
+     */
+    boolean existsRolePermissionRelation(@Param("roleId") Long roleId, @Param("permissionId") Long permissionId);
+
     int deleteAdminRoleRelationByRoleId(@Param("roleId") Long roleId);
 }

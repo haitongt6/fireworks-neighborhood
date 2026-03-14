@@ -25,6 +25,9 @@ import java.util.stream.Collectors;
 @Service
 public class UmsMenuServiceImpl implements UmsMenuService {
 
+    /** 超级管理员角色 ID，与 fireworks_neighborhood.sql 初始化一致 */
+    private static final long SUPER_ADMIN_ROLE_ID = 1L;
+
     private final UmsAdminMapper umsAdminMapper;
     private final UmsPermissionMapper umsPermissionMapper;
     private final UmsRoleMapper umsRoleMapper;
@@ -106,6 +109,7 @@ public class UmsMenuServiceImpl implements UmsMenuService {
         p.setIcon(param.getIcon() != null ? param.getIcon().trim() : null);
         p.setType(param.getType());
         umsPermissionMapper.insert(p);
+        grantPermissionToSuperAdmin(p.getId());
         return p;
     }
 
@@ -131,7 +135,16 @@ public class UmsMenuServiceImpl implements UmsMenuService {
         btn.setValue(param.getValue().trim());
         btn.setType(2);
         umsPermissionMapper.insert(btn);
+        grantPermissionToSuperAdmin(btn.getId());
         return btn;
+    }
+
+    /** 将新权限授予超级管理员角色，便于新增后立即在菜单中看到。 */
+    private void grantPermissionToSuperAdmin(Long permissionId) {
+        if (permissionId == null) return;
+        if (!umsRoleMapper.existsRolePermissionRelation(SUPER_ADMIN_ROLE_ID, permissionId)) {
+            umsRoleMapper.insertRolePermissionRelation(SUPER_ADMIN_ROLE_ID, permissionId);
+        }
     }
 
     @Override

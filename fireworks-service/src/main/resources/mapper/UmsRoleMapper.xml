@@ -30,4 +30,10 @@
         DELETE FROM ums_admin_role_relation
         WHERE role_id = #{roleId}
     </delete>
+
+    <select id="existsRolePermissionRelation" resultType="boolean">
+        SELECT COUNT(1) > 0
+        FROM ums_role_permission_relation
+        WHERE role_id = #{roleId} AND permission_id = #{permissionId}
+    </select>
 </mapper>
