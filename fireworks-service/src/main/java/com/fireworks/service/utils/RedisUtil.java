@@ -1,5 +1,6 @@
 package com.fireworks.service.utils;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -77,6 +78,23 @@ public class RedisUtil {
         }
         try {
             return OBJECT_MAPPER.readValue(json, clazz);
+        } catch (Exception e) {
+            throw new RuntimeException("Redis get 反序列化失败, key=" + key, e);
+        }
+    }
+
+    /**
+     * 按 TypeReference 取出对象（支持泛型如 List&lt;T&gt;）。
+     *
+     * @return 对象实例；key 不存在时返回 null
+     */
+    public static <T> T get(String key, TypeReference<T> typeRef) {
+        String json = REDIS_TEMPLATE.opsForValue().get(key);
+        if (json == null) {
+            return null;
+        }
+        try {
+            return OBJECT_MAPPER.readValue(json, typeRef);
         } catch (Exception e) {
             throw new RuntimeException("Redis get 反序列化失败, key=" + key, e);
         }

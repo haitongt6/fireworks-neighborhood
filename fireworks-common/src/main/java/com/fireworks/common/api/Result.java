@@ -1,5 +1,7 @@
 package com.fireworks.common.api;
 
+import lombok.Data;
+
 /**
  * 统一 API 响应结果封装。
  * <p>
@@ -9,6 +11,7 @@ package com.fireworks.common.api;
  *
  * @param <T> 响应数据类型
  */
+@Data
 public class Result<T> {
 
     /** HTTP 业务状态码 */
@@ -21,18 +24,6 @@ public class Result<T> {
     private T data;
 
     private Result() {
-    }
-
-    public Integer getCode() {
-        return code;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public T getData() {
-        return data;
     }
 
     // ──────────────────────────────────────────────
@@ -48,9 +39,9 @@ public class Result<T> {
      */
     public static <T> Result<T> success(T data) {
         Result<T> result = new Result<T>();
-        result.code = 200;
-        result.message = "操作成功";
-        result.data = data;
+        result.setCode(200);
+        result.setMessage("操作成功");
+        result.setData(data);
         return result;
     }
 
@@ -73,8 +64,8 @@ public class Result<T> {
      */
     public static <T> Result<T> failed(String message) {
         Result<T> result = new Result<T>();
-        result.code = 500;
-        result.message = message;
+        result.setCode(500);
+        result.setMessage(message);
         return result;
     }
 
@@ -87,8 +78,8 @@ public class Result<T> {
      */
     public static <T> Result<T> unauthorized(String message) {
         Result<T> result = new Result<T>();
-        result.code = 401;
-        result.message = message;
+        result.setCode(401);
+        result.setMessage(message);
         return result;
     }
 
@@ -101,8 +92,8 @@ public class Result<T> {
      */
     public static <T> Result<T> forbidden(String message) {
         Result<T> result = new Result<T>();
-        result.code = 403;
-        result.message = message;
+        result.setCode(403);
+        result.setMessage(message);
         return result;
     }
 }

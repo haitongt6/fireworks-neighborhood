@@ -11,6 +11,11 @@ import java.util.List;
  */
 public interface PmsCategoryService {
 
+    /**
+     * 根据 ID 查询类目，不存在返回 null。
+     */
+    PmsProductCategory getById(Long id);
+
     List<PmsProductCategory> listAll();
 
     PmsProductCategory add(PmsCategoryAddParam param);

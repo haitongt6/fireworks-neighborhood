@@ -15,7 +15,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * {@code @MapperScan} 指定 MyBatis-Plus 的 Mapper 接口扫描路径。
  * </p>
  */
-@SpringBootApplication(scanBasePackages = {"com.fireworks.admin", "com.fireworks.service"})
+@SpringBootApplication(scanBasePackages = {"com.fireworks.admin", "com.fireworks.service", "com.fireworks.common"})
 @MapperScan("com.fireworks.service.mapper")
 public class FireworksAdminApplication {
 

@@ -6,10 +6,14 @@ import com.fireworks.model.dto.PmsProductAddParam;
 import com.fireworks.model.dto.PmsProductQueryParam;
 import com.fireworks.model.dto.PmsProductUpdateParam;
 import com.fireworks.model.pojo.PmsProduct;
+import com.fireworks.model.pojo.PmsProductCategory;
+import com.fireworks.model.vo.ApiProductDetailVO;
 import com.fireworks.model.vo.PageResult;
 import com.fireworks.model.vo.PmsProductListVO;
+import com.fireworks.service.PmsCategoryService;
 import com.fireworks.service.PmsProductService;
 import com.fireworks.service.mapper.PmsProductMapper;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,9 +24,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class PmsProductServiceImpl implements PmsProductService {
 
     private final PmsProductMapper productMapper;
+    private final PmsCategoryService pmsCategoryService;
 
-    public PmsProductServiceImpl(PmsProductMapper productMapper) {
+    public PmsProductServiceImpl(PmsProductMapper productMapper,
+                                 PmsCategoryService pmsCategoryService) {
         this.productMapper = productMapper;
+        this.pmsCategoryService = pmsCategoryService;
     }
 
     @Override
@@ -32,6 +39,9 @@ public class PmsProductServiceImpl implements PmsProductService {
         }
         if (param.getPageSize() == null || param.getPageSize() < 1) {
             param.setPageSize(10);
+        }
+        if (param.getStatus() == null) {
+            param.setStatus(1);
         }
         Page<PmsProductListVO> page = new Page<>(param.getPageNum(), param.getPageSize());
         IPage<PmsProductListVO> result = productMapper.selectProductListPage(page, param);
@@ -48,6 +58,20 @@ public class PmsProductServiceImpl implements PmsProductService {
             throw new IllegalArgumentException("商品不存在");
         }
         return p;
+    }
+
+    @Override
+    public ApiProductDetailVO getProductDetail(Long id) {
+        PmsProduct p = getById(id);
+        ApiProductDetailVO vo = new ApiProductDetailVO();
+        BeanUtils.copyProperties(p, vo);
+        if (p.getCategoryId() != null) {
+            PmsProductCategory cat = pmsCategoryService.getById(p.getCategoryId());
+            if (cat != null) {
+                vo.setCategoryName(cat.getName());
+            }
+        }
+        return vo;
     }
 
     @Override
@@ -72,15 +96,10 @@ public class PmsProductServiceImpl implements PmsProductService {
             throw new IllegalArgumentException("详情图至少保留一张");
         }
         PmsProduct p = new PmsProduct();
-        p.setTitle(param.getTitle().trim());
-        p.setSubTitle(param.getSubTitle() != null ? param.getSubTitle().trim() : null);
-        p.setCategoryId(param.getCategoryId());
-        p.setImages(param.getImages());
-        p.setMainVideo(param.getMainVideo());
-        p.setDetailPics(param.getDetailPics());
-        p.setPrice(param.getPrice());
-        p.setStock(param.getStock());
-        p.setStatus(param.getStatus() != null ? param.getStatus() : 1);
+        BeanUtils.copyProperties(param, p);
+        p.setTitle(p.getTitle().trim());
+        p.setSubTitle(p.getSubTitle() != null ? p.getSubTitle().trim() : null);
+        p.setStatus(p.getStatus() != null ? p.getStatus() : 1);
         productMapper.insert(p);
         return p;
     }
@@ -98,15 +117,9 @@ public class PmsProductServiceImpl implements PmsProductService {
             throw new IllegalArgumentException("详情图至少保留一张");
         }
         PmsProduct p = getById(id);
-        p.setTitle(param.getTitle() != null ? param.getTitle().trim() : null);
-        p.setSubTitle(param.getSubTitle() != null ? param.getSubTitle().trim() : null);
-        p.setCategoryId(param.getCategoryId());
-        p.setImages(param.getImages());
-        p.setMainVideo(param.getMainVideo());
-        p.setDetailPics(param.getDetailPics());
-        p.setPrice(param.getPrice());
-        p.setStock(param.getStock());
-        p.setStatus(param.getStatus());
+        BeanUtils.copyProperties(param, p);
+        p.setTitle(p.getTitle().trim());
+        p.setSubTitle(p.getSubTitle() != null ? p.getSubTitle().trim() : null);
         productMapper.updateById(p);
     }
 }

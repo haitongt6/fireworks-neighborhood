@@ -1,8 +1,11 @@
 package com.fireworks.admin.dto;
 
+import lombok.Data;
+
 /**
  * 管理员登录请求参数。
  */
+@Data
 public class UmsAdminLoginParam {
 
     /** 登录用户名 */
@@ -10,20 +13,4 @@ public class UmsAdminLoginParam {
 
     /** 明文密码 */
     private String password;
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
 }

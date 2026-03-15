@@ -25,6 +25,14 @@ public class PmsCategoryServiceImpl implements PmsCategoryService {
     }
 
     @Override
+    public PmsProductCategory getById(Long id) {
+        if (id == null) {
+            return null;
+        }
+        return categoryMapper.selectById(id);
+    }
+
+    @Override
     public List<PmsProductCategory> listAll() {
         return categoryMapper.selectList(
                 new LambdaQueryWrapper<PmsProductCategory>()

@@ -1,19 +1,11 @@
 apply plugin: 'org.springframework.boot'
 
 dependencies {
-    implementation project(':fireworks-service')
-    // fireworks-service 通过 implementation 引入 common/model，编译期不向上传递
-    // fireworks-admin 的 Controller 层直接使用 Result、实体类，需在此显式声明
     implementation project(':fireworks-common')
-    implementation project(':fireworks-model')
+    implementation project(':fireworks-service')
 
-    implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
-    // Spring Security Web + Config，触发 Security 自动配置
     implementation 'org.springframework.boot:spring-boot-starter-security'
-    // @MapperScan 注解来自 mybatis-spring，fireworks-service 通过 implementation 引入不向上传递编译期依赖
-    // 因此 fireworks-admin 需要直接声明，确保编译期可见
-    implementation 'com.baomidou:mybatis-plus-boot-starter:3.5.7'
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-mysql'
 

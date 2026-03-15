@@ -4,6 +4,7 @@ import com.fireworks.model.dto.PmsProductAddParam;
 import com.fireworks.model.dto.PmsProductQueryParam;
 import com.fireworks.model.dto.PmsProductUpdateParam;
 import com.fireworks.model.pojo.PmsProduct;
+import com.fireworks.model.vo.ApiProductDetailVO;
 import com.fireworks.model.vo.PageResult;
 import com.fireworks.model.vo.PmsProductListVO;
 
@@ -21,6 +22,11 @@ public interface PmsProductService {
      * 根据ID获取商品详情。
      */
     PmsProduct getById(Long id);
+
+    /**
+     * 根据ID获取 C 端商品详情（含类目名称等展示字段）。
+     */
+    ApiProductDetailVO getProductDetail(Long id);
 
     /**
      * 新增商品。

@@ -2,6 +2,6 @@ rootProject.name = 'fireworks-neighborhood'
 
 include 'fireworks-common'
 include 'fireworks-model'
+include 'fireworks-service'
 include 'fireworks-admin'
 include 'fireworks-api'
-include 'fireworks-service'

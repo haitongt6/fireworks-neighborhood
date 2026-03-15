@@ -1,0 +1,31 @@
+server:
+  port: 8080
+
+spring:
+  redis:
+    host: 127.0.0.1
+    port: 6379
+  datasource:
+    url: jdbc:mysql://localhost:3306/fireworks_neighborhood?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+
+# 文件上传存储路径（与 admin 共用，供 /api/file/** 静态资源访问）
+file:
+  upload-dir: D:/fireworks -neighborhood-file
+
+# JWT 配置（service 层 UmsAdminServiceImpl 依赖 JwtTokenUtil，需提供占位配置）
+jwt:
+  secret: fireworks-neighborhood-jwt-secret-key-please-change-in-production
+  expiration: 86400
+  tokenHeader: Authorization
+  tokenHead: "Bearer "

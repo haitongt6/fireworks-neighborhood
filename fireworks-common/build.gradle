@@ -1,5 +1,10 @@
+apply plugin: 'java-library'
+
 dependencies {
-    implementation project(':fireworks-model')
+    api project(':fireworks-model')
+    api 'org.springframework.boot:spring-boot-starter-web'
+    api 'com.baomidou:mybatis-plus-boot-starter:3.5.7'
+
     implementation 'org.springframework.security:spring-security-core'
     implementation 'com.fasterxml.jackson.core:jackson-annotations'
 
