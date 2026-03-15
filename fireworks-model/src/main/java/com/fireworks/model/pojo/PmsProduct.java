@@ -1,6 +1,8 @@
 package com.fireworks.model.pojo;
 
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -22,6 +24,7 @@ public class PmsProduct {
     private String title;
 
     /** 副标题/促销语 */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String subTitle;
 
     /** 类目ID */
@@ -30,7 +33,8 @@ public class PmsProduct {
     /** 主图，多张图片URL存JSON数组或逗号分隔 */
     private String images;
 
-    /** 主图视频URL */
+    /** 主图视频URL，支持删除（ALWAYS 策略允许更新为空） */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String mainVideo;
 
     /** 详情图，多张图片URL存JSON数组或逗号分隔 */
@@ -39,11 +43,11 @@ public class PmsProduct {
     /** 展示价/起售价，单位元 */
     private BigDecimal price;
 
+    /** 库存 */
+    private Integer stock;
+
     /** 状态：1-上架，0-下架，2-待上架 */
     private Integer status;
-
-    /** 排序 */
-    private Integer sort;
 
     private Date createTime;
     private Date updateTime;

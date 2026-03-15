@@ -12,6 +12,8 @@ import com.fireworks.service.PmsProductService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
+
 /**
  * 商品管理接口。
  */
@@ -39,13 +41,13 @@ public class PmsProductController {
 
     @PostMapping("/product")
     @PreAuthorize("hasAuthority(T(com.fireworks.model.constant.PermissionConstant).PRODUCT_ADD)")
-    public Result<PmsProduct> add(@RequestBody PmsProductAddParam param) {
+    public Result<PmsProduct> add(@RequestBody @Valid PmsProductAddParam param) {
         return Result.success(pmsProductService.add(param));
     }
 
     @PutMapping("/product/{id}")
     @PreAuthorize("hasAuthority(T(com.fireworks.model.constant.PermissionConstant).PRODUCT_EDIT)")
-    public Result<Void> update(@PathVariable Long id, @RequestBody PmsProductUpdateParam param) {
+    public Result<Void> update(@PathVariable Long id, @RequestBody @Valid PmsProductUpdateParam param) {
         pmsProductService.update(id, param);
         return Result.success();
     }

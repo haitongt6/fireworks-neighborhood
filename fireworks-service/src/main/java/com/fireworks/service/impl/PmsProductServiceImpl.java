@@ -62,6 +62,15 @@ public class PmsProductServiceImpl implements PmsProductService {
         if (param.getPrice() == null) {
             throw new IllegalArgumentException("价格不能为空");
         }
+        if (param.getStock() == null || param.getStock() < 0) {
+            throw new IllegalArgumentException("库存必填且必须大于等于0");
+        }
+        if (param.getImages() == null || param.getImages().trim().isEmpty()) {
+            throw new IllegalArgumentException("主图至少保留一张");
+        }
+        if (param.getDetailPics() == null || param.getDetailPics().trim().isEmpty()) {
+            throw new IllegalArgumentException("详情图至少保留一张");
+        }
         PmsProduct p = new PmsProduct();
         p.setTitle(param.getTitle().trim());
         p.setSubTitle(param.getSubTitle() != null ? param.getSubTitle().trim() : null);
@@ -70,8 +79,8 @@ public class PmsProductServiceImpl implements PmsProductService {
         p.setMainVideo(param.getMainVideo());
         p.setDetailPics(param.getDetailPics());
         p.setPrice(param.getPrice());
+        p.setStock(param.getStock());
         p.setStatus(param.getStatus() != null ? param.getStatus() : 1);
-        p.setSort(param.getSort() != null ? param.getSort() : 0);
         productMapper.insert(p);
         return p;
     }
@@ -79,34 +88,25 @@ public class PmsProductServiceImpl implements PmsProductService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void update(Long id, PmsProductUpdateParam param) {
+        if (param.getStock() != null && param.getStock() < 0) {
+            throw new IllegalArgumentException("库存必须大于等于0");
+        }
+        if (param.getImages() != null && param.getImages().trim().isEmpty()) {
+            throw new IllegalArgumentException("主图至少保留一张");
+        }
+        if (param.getDetailPics() != null && param.getDetailPics().trim().isEmpty()) {
+            throw new IllegalArgumentException("详情图至少保留一张");
+        }
         PmsProduct p = getById(id);
-        if (param.getTitle() != null) {
-            p.setTitle(param.getTitle().trim());
-        }
-        if (param.getSubTitle() != null) {
-            p.setSubTitle(param.getSubTitle().trim());
-        }
-        if (param.getCategoryId() != null) {
-            p.setCategoryId(param.getCategoryId());
-        }
-        if (param.getImages() != null) {
-            p.setImages(param.getImages());
-        }
-        if (param.getMainVideo() != null) {
-            p.setMainVideo(param.getMainVideo());
-        }
-        if (param.getDetailPics() != null) {
-            p.setDetailPics(param.getDetailPics());
-        }
-        if (param.getPrice() != null) {
-            p.setPrice(param.getPrice());
-        }
-        if (param.getStatus() != null) {
-            p.setStatus(param.getStatus());
-        }
-        if (param.getSort() != null) {
-            p.setSort(param.getSort());
-        }
+        p.setTitle(param.getTitle() != null ? param.getTitle().trim() : null);
+        p.setSubTitle(param.getSubTitle() != null ? param.getSubTitle().trim() : null);
+        p.setCategoryId(param.getCategoryId());
+        p.setImages(param.getImages());
+        p.setMainVideo(param.getMainVideo());
+        p.setDetailPics(param.getDetailPics());
+        p.setPrice(param.getPrice());
+        p.setStock(param.getStock());
+        p.setStatus(param.getStatus());
         productMapper.updateById(p);
     }
 }

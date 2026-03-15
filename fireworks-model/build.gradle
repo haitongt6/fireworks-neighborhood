@@ -1,6 +1,7 @@
 dependencies {
     // MyBatis-Plus 注解（@TableName、@TableId 等），仅需注解包，不引入运行时依赖
     implementation 'com.baomidou:mybatis-plus-annotation:3.5.7'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 }

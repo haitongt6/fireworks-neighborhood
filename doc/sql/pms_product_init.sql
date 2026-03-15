@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS pms_product
     main_video  VARCHAR(500)   DEFAULT NULL COMMENT '主图视频URL',
     detail_pics TEXT           DEFAULT NULL COMMENT '详情图，多张图片URL存JSON数组或逗号分隔',
     price       DECIMAL(10, 2) NOT NULL DEFAULT 0.00 COMMENT '展示价/起售价，单位元',
+    stock       INT            NOT NULL DEFAULT 0 COMMENT '库存',
     status      TINYINT        NOT NULL DEFAULT 1 COMMENT '状态：1-上架，0-下架，2-待上架',
     sort        INT            NOT NULL DEFAULT 0 COMMENT '排序，升序',
     create_time DATETIME       DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -78,11 +79,11 @@ WHERE p.type = 2 AND p.value IN ('pms:product:list', 'pms:product:add', 'pms:pro
 -- 若表已存在且含 stock 列，请先执行 doc/sql/pms_product_drop_stock.sql
 
 -- ------------------------------------------------------------
--- 5. 测试商品数据（可选，便于联调；库存从 pms_product_sku 关联获取）
+-- 5. 测试商品数据（可选，便于联调）
 -- ------------------------------------------------------------
-INSERT INTO pms_product (title, sub_title, category_id, images, price, status, sort)
-SELECT '新鲜红富士苹果 5kg 礼盒装', '顺丰包邮', c.id, 'https://picsum.photos/seed/apple/200/200', 59.90, 1, 0
+INSERT INTO pms_product (title, sub_title, category_id, images, price, stock, status, sort)
+SELECT '新鲜红富士苹果 5kg 礼盒装', '顺丰包邮', c.id, 'https://picsum.photos/seed/apple/200/200', 59.90, 156, 1, 0
 FROM pms_product_category c LIMIT 1;
-INSERT INTO pms_product (title, sub_title, category_id, images, price, status, sort)
-SELECT '特仑苏纯牛奶 250ml*12 提', '品质之选', c.id, 'https://picsum.photos/seed/milk/200/200', 49.90, 1, 1
+INSERT INTO pms_product (title, sub_title, category_id, images, price, stock, status, sort)
+SELECT '特仑苏纯牛奶 250ml*12 提', '品质之选', c.id, 'https://picsum.photos/seed/milk/200/200', 49.90, 85, 1, 1
 FROM pms_product_category c LIMIT 1;

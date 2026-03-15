@@ -37,15 +37,15 @@ public class UmsRoleServiceImpl implements UmsRoleService {
     private final UmsPermissionMapper umsPermissionMapper;
     private final UmsAdminMapper umsAdminMapper;
 
-    private final  AdminUserDetailsService adminUserDetailsService;
+    private final AdminUserDetailsService adminUserDetailsService;
 
     public UmsRoleServiceImpl(UmsRoleMapper umsRoleMapper,
                               UmsPermissionMapper umsPermissionMapper,
-                              UmsAdminMapper umsAdminMapper,AdminUserDetailsService adminUserDetailsService) {
+                              UmsAdminMapper umsAdminMapper, AdminUserDetailsService adminUserDetailsService) {
         this.umsRoleMapper = umsRoleMapper;
         this.umsPermissionMapper = umsPermissionMapper;
         this.umsAdminMapper = umsAdminMapper;
-        this.adminUserDetailsService=adminUserDetailsService;
+        this.adminUserDetailsService = adminUserDetailsService;
     }
 
     @Override
@@ -65,14 +65,20 @@ public class UmsRoleServiceImpl implements UmsRoleService {
      */
     private Set<Long> expandWithAncestors(List<Long> permissionIds) {
         Set<Long> result = new LinkedHashSet<>();
-        if (permissionIds == null) return result;
+        if (permissionIds == null) {
+            return result;
+        }
         for (Long id : permissionIds) {
-            if (id == null) continue;
+            if (id == null) {
+                continue;
+            }
             result.add(id);
             Long currentPid = id;
             while (true) {
                 UmsPermission p = umsPermissionMapper.selectById(currentPid);
-                if (p == null || p.getPid() == null || p.getPid() == 0) break;
+                if (p == null || p.getPid() == null || p.getPid() == 0) {
+                    break;
+                }
                 currentPid = p.getPid();
                 result.add(currentPid);
             }
@@ -80,7 +86,9 @@ public class UmsRoleServiceImpl implements UmsRoleService {
         return result;
     }
 
-    /** 递归构建权限树。目录/菜单为分组节点，type=2 按钮为叶子可勾选节点。 */
+    /**
+     * 递归构建权限树。目录/菜单为分组节点，type=2 按钮为叶子可勾选节点。
+     */
     private List<PermissionTreeNodeVO> buildPermissionTree(List<UmsPermission> list, Long pid) {
         List<PermissionTreeNodeVO> result = new ArrayList<>();
         for (UmsPermission p : list) {
@@ -158,9 +166,7 @@ public class UmsRoleServiceImpl implements UmsRoleService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateRole(Long roleId, UmsRoleUpdateParam param) {
-        AdminUserDetails adminUserDetails =(AdminUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        boolean superAdminEnabled = UserRoleUtil.isSuperAdminEnabled(adminUserDetails.getRoleList());
-        if (superAdminEnabled){
+        if (Long.valueOf(1).equals(roleId)) {
             throw new IllegalArgumentException("超级管理员禁止修改角色");
         }
         if (roleId == null) {

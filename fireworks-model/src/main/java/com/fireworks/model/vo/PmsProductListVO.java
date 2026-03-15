@@ -28,8 +28,6 @@ public class PmsProductListVO {
     private Integer stock;
     /** 状态：1-上架，0-下架，2-待上架 */
     private Integer status;
-    /** 排序 */
-    private Integer sort;
     private Date createTime;
     private Date updateTime;
 }

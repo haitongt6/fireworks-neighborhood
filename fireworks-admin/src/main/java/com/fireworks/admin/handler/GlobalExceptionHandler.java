@@ -5,6 +5,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.validation.BindException;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -60,6 +63,22 @@ public class GlobalExceptionHandler {
     public Result<?> handleAccessDeniedException(AccessDeniedException e) {
         log.warn("权限不足: {}", e.getMessage());
         return Result.forbidden("权限不足，禁止访问");
+    }
+
+    /**
+     * 入参校验失败（@Valid 触发的 JSR-303 校验）。
+     */
+    @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
+    public Result<?> handleValidationException(Exception e) {
+        BindingResult br = e instanceof MethodArgumentNotValidException
+                ? ((MethodArgumentNotValidException) e).getBindingResult()
+                : ((BindException) e).getBindingResult();
+        String message = br.getFieldErrors().stream()
+                .map(err -> err.getField() + ": " + err.getDefaultMessage())
+                .reduce((a, b) -> a + "; " + b)
+                .orElse("参数校验失败");
+        log.warn("入参校验失败: {}", message);
+        return Result.failed(message);
     }
 
     /**

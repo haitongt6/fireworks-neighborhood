@@ -13,6 +13,10 @@ logging:
 
 # ── 数据源配置 ────────────────────────────────────────────────────────────────
 spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB      # 单个文件最大 10M
+      max-request-size: 10MB  # 整次请求最大 10M
   datasource:
     url: jdbc:mysql://localhost:3306/fireworks_neighborhood?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root

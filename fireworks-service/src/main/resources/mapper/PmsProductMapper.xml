@@ -13,14 +13,12 @@
             c.name AS categoryName,
             p.images AS images,
             p.price,
-            IFNULL(SUM(s.stock), 0) AS stock,
+            IFNULL(p.stock, 0) AS stock,
             p.status,
-            p.sort,
             p.create_time AS createTime,
             p.update_time AS updateTime
         FROM pms_product p
         LEFT JOIN pms_product_category c ON p.category_id = c.id
-        LEFT JOIN pms_product_sku s ON s.product_id = p.id
         <where>
             <if test="param.productId != null">
                 AND p.id = #{param.productId}
@@ -47,7 +45,6 @@
                 AND p.create_time &lt;= CONCAT(#{param.createTimeEnd}, ' 23:59:59')
             </if>
         </where>
-        GROUP BY p.id, p.title, p.sub_title, p.category_id, c.name, p.images, p.price, p.status, p.sort, p.create_time, p.update_time
         ORDER BY p.create_time DESC
     </select>
 

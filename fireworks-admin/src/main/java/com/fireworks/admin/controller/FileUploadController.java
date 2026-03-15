@@ -73,7 +73,17 @@ public class FileUploadController {
             Path target = dir.resolve(fileName);
             file.transferTo(target.toFile());
             // 返回前端可访问的 URL：/api/file/xxx（经代理转发）
-            String relativePath = "main".equals(category) ? fileName : category + "/" + fileName;
+            // relativePath 须与 dir 子目录一致：main→根目录, video→videos/, desc→descs/
+            String relativePath;
+            if ("main".equals(category)) {
+                relativePath = fileName;
+            } else if ("video".equals(category)) {
+                relativePath = "videos/" + fileName;
+            } else if ("desc".equals(category)) {
+                relativePath = "descs/" + fileName;
+            } else {
+                relativePath = category + "/" + fileName;
+            }
             return Result.success("/api/file/" + relativePath);
         } catch (IOException e) {
             return Result.failed("上传失败: " + e.getMessage());
