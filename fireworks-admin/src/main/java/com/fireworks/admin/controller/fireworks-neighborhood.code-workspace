@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "../../../../../../../../../fireworks-neighborhood-web"
+		},
+		{
+			"path": "../../../../../../../../../fireworks-neighborhood-api-web"
 		}
 	],
 	"settings": {}

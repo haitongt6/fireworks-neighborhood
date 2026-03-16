@@ -14,7 +14,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -42,26 +41,18 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
     private final RestAccessDeniedHandler restAccessDeniedHandler;
 
+    private final PasswordEncoder passwordEncoder;
+
     public SecurityConfig(AdminUserDetailsService adminUserDetailsService,
                           JwtAuthenticationTokenFilter jwtAuthenticationTokenFilter,
                           RestAuthenticationEntryPoint restAuthenticationEntryPoint,
-                          RestAccessDeniedHandler restAccessDeniedHandler) {
+                          RestAccessDeniedHandler restAccessDeniedHandler,
+                          PasswordEncoder passwordEncoder) {
         this.adminUserDetailsService = adminUserDetailsService;
         this.jwtAuthenticationTokenFilter = jwtAuthenticationTokenFilter;
         this.restAuthenticationEntryPoint = restAuthenticationEntryPoint;
         this.restAccessDeniedHandler = restAccessDeniedHandler;
-    }
-
-    /**
-     * 密码编码器 Bean，采用 BCrypt 强哈希算法。
-     * <p>
-     * 此 Bean 同时被 {@link com.fireworks.service.impl.UmsAdminServiceImpl} 注入，
-     * 用于登录时的密码比对。
-     * </p>
-     */
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        this.passwordEncoder = passwordEncoder;
     }
 
     /**
@@ -82,7 +73,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
         auth.userDetailsService(adminUserDetailsService)
-                .passwordEncoder(passwordEncoder());
+                .passwordEncoder(passwordEncoder);
     }
 
     /**

@@ -1,13 +1,12 @@
-package com.fireworks.admin.handler;
+package com.fireworks.service.handler;
 
 import com.fireworks.common.api.Result;
+import com.fireworks.service.exception.SmsLimitException;
+import com.fireworks.service.exception.SmsSendException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.validation.BindException;
-import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -16,15 +15,10 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
- * 全局异常拦截器。
+ * 全局异常处理器（API 与 Admin 公用）。
  * <p>
  * 统一捕获 Controller 层抛出的异常，转换为 {@link Result} 响应返回。
- * Controller 不再需要 try-catch，由 Service 抛出业务异常，此处统一处理。
- * </p>
- * <p>
- * 注意：{@link AccessDeniedException} 来自 @PreAuthorize 方法级权限校验失败，
- * 在 DispatcherServlet/MVC 层抛出，由本类捕获。而 RestAccessDeniedHandler 仅处理
- * 过滤器层的 URL 级鉴权失败，两者触发场景不同。
+ * 包含：登录/权限、短信、业务参数、未知异常等。
  * </p>
  */
 @RestControllerAdvice
@@ -34,7 +28,6 @@ public class GlobalExceptionHandler {
 
     /**
      * 登录失败：用户名不存在或密码错误。
-     * <p>统一返回模糊描述，防止用户枚举攻击。</p>
      */
     @ExceptionHandler({UsernameNotFoundException.class, BadCredentialsException.class})
     public Result<?> handleLoginCredentialError(Exception e) {
@@ -53,10 +46,6 @@ public class GlobalExceptionHandler {
 
     /**
      * 方法级权限不足（@PreAuthorize 校验失败）。
-     * <p>
-     * 该方法级权限在 Controller 方法调用前由 Spring AOP 校验，异常在 MVC 层抛出，
-     * 故由本类捕获，不会走 RestAccessDeniedHandler。
-     * </p>
      */
     @ExceptionHandler(AccessDeniedException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
@@ -66,27 +55,29 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 入参校验失败（@Valid 触发的 JSR-303 校验）。
+     * 短信限流。
      */
-    @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
-    public Result<?> handleValidationException(Exception e) {
-        BindingResult br = e instanceof MethodArgumentNotValidException
-                ? ((MethodArgumentNotValidException) e).getBindingResult()
-                : ((BindException) e).getBindingResult();
-        String message = br.getFieldErrors().stream()
-                .map(err -> err.getField() + ": " + err.getDefaultMessage())
-                .reduce((a, b) -> a + "; " + b)
-                .orElse("参数校验失败");
-        log.warn("入参校验失败: {}", message);
-        return Result.failed(message);
+    @ExceptionHandler(SmsLimitException.class)
+    public Result<?> handleSmsLimitException(SmsLimitException e) {
+        log.warn("短信限流: code={}, message={}", e.getCode(), e.getMessage());
+        return Result.failed(e.getMessage());
     }
 
     /**
-     * 业务参数校验失败，如用户名已存在、角色为空等。
+     * 短信发送失败。
+     */
+    @ExceptionHandler(SmsSendException.class)
+    public Result<?> handleSmsSendException(SmsSendException e) {
+        log.warn("短信发送失败: {}", e.getMessage());
+        return Result.failed(e.getMessage());
+    }
+
+    /**
+     * 业务参数校验失败。
      */
     @ExceptionHandler(IllegalArgumentException.class)
     public Result<?> handleIllegalArgumentException(IllegalArgumentException e) {
-        log.warn("业务参数校验失败: {}", e.getMessage());
+        log.warn("参数校验失败: {}", e.getMessage());
         return Result.failed(e.getMessage());
     }
 

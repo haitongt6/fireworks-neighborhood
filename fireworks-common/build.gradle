@@ -7,6 +7,8 @@ dependencies {
 
     implementation 'org.springframework.security:spring-security-core'
     implementation 'com.fasterxml.jackson.core:jackson-annotations'
+    implementation 'com.aliyun:dypnsapi20170525:2.0.0'
+
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

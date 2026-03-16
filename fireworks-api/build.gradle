@@ -1,13 +1,13 @@
 apply plugin: 'org.springframework.boot'
 
 dependencies {
+    implementation project(':fireworks-service')
     implementation project(':fireworks-common')
     implementation project(':fireworks-model')
-    implementation project(':fireworks-service')
 
-    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-    implementation 'org.springframework.security:spring-security-crypto'
-    implementation 'mysql:mysql-connector-java:8.0.33'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'com.baomidou:mybatis-plus-boot-starter:3.5.7'
+    implementation 'org.springframework.security:spring-security-core'
 }
 
 bootJar {

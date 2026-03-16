@@ -5,13 +5,13 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
- * 烟火邻里 - C 端对外 API 启动入口（端口 8080）。
- *
+ * 烟火邻里 - C 端 API 启动入口（端口 8080）。
  * <p>
- * 扫描 {@code fireworks-service} 中的 Service、Mapper，供 Controller 注入使用。
+ * scanBasePackages 确保 fireworks-service 中的 @Service 等 Bean 被扫描。
+ * MapperScan 确保 MyBatis Mapper 接口被注册为 Bean。
  * </p>
  */
-@SpringBootApplication(scanBasePackages = {"com.fireworks.api", "com.fireworks.service", "com.fireworks.common"})
+@SpringBootApplication(scanBasePackages = {"com.fireworks.api", "com.fireworks.service"})
 @MapperScan("com.fireworks.service.mapper")
 public class FireworksApiApplication {
 

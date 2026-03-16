@@ -2,14 +2,14 @@ server:
   port: 8080
 
 spring:
-  redis:
-    host: 127.0.0.1
-    port: 6379
   datasource:
     url: jdbc:mysql://localhost:3306/fireworks_neighborhood?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
+  redis:
+    host: 127.0.0.1
+    port: 6379
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
@@ -19,13 +19,19 @@ mybatis-plus:
     db-config:
       id-type: auto
 
-# 文件上传存储路径（与 admin 共用，供 /api/file/** 静态资源访问）
-file:
-  upload-dir: D:/fireworks -neighborhood-file
-
-# JWT 配置（service 层 UmsAdminServiceImpl 依赖 JwtTokenUtil，需提供占位配置）
+# JWT 配置（C 端与后台可复用）
 jwt:
   secret: fireworks-neighborhood-jwt-secret-key-please-change-in-production
   expiration: 86400
   tokenHeader: Authorization
   tokenHead: "Bearer "
+
+# 阿里云号码认证服务（dypnsapi）配置，使用 SendSmsVerifyCode 接口发送验证码
+# 验证码模板需包含 ${code}、${min} 变量，本系统传 {"code":"123456","min":"5"}
+# access-key-id 与 access-key-secret 必须通过环境变量或 application-local.yml 注入，切勿提交到仓库
+aliyun:
+  sms:
+    access-key-id: ${ALIYUN_SMS_ACCESS_KEY_ID:}
+    access-key-secret: ${ALIYUN_SMS_ACCESS_KEY_SECRET:}
+    sign-name: 速通互联验证码
+    template-code: 100001
