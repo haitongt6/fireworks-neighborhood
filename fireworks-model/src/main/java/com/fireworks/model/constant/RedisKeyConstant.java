@@ -4,6 +4,9 @@ public class RedisKeyConstant {
 
     public static final String USER_INFO_KEY = "user:info:";
 
+    /** C 端分类列表缓存，api:category:list */
+    public static final String API_CATEGORY_LIST = "api:category:list";
+
     /** 短信验证码，auth:code:phone:{phone}，5 分钟有效 */
     public static final String AUTH_CODE_PHONE_PREFIX = "auth:code:phone:";
 
