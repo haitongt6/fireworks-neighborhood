@@ -1,7 +1,7 @@
 package com.fireworks.admin.controller;
 
 import com.fireworks.common.util.RsaUtil;
-import com.fireworks.admin.dto.UmsAdminLoginParam;
+import com.fireworks.model.dto.UmsAdminLoginParam;
 import com.fireworks.service.config.RsaKeyHolder;
 import com.fireworks.model.constant.PermissionConstant;
 import com.fireworks.model.dto.ProfileUpdateParam;
@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
  * 后台管理员认证接口。
  *
  * <p>所有接口均返回 {@link Result} 统一响应体，前端根据 {@code code} 字段判断请求结果。</p>
- * <p>异常由 {@link com.fireworks.service.handler.GlobalExceptionHandler} 统一拦截处理。</p>
+ * <p>异常由 {@link com.fireworks.admin.handler.GlobalExceptionHandler} 统一拦截处理。</p>
  */
 @RestController
 @RequestMapping("/admin")

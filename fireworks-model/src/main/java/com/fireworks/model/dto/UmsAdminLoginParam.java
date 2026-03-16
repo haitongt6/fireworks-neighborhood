@@ -1,4 +1,4 @@
-package com.fireworks.admin.dto;
+package com.fireworks.model.dto;
 
 import lombok.Data;
 

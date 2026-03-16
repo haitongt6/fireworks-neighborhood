@@ -1,14 +1,7 @@
-apply plugin: 'java-library'
-
 dependencies {
-    api project(':fireworks-model')
-    api 'org.springframework.boot:spring-boot-starter-web'
-    api 'com.baomidou:mybatis-plus-boot-starter:3.5.7'
-
+    implementation project(':fireworks-model')
     implementation 'org.springframework.security:spring-security-core'
     implementation 'com.fasterxml.jackson.core:jackson-annotations'
-    implementation 'com.aliyun:dypnsapi20170525:2.0.0'
-
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
