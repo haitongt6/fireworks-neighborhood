@@ -46,7 +46,7 @@ mybatis-plus:
 
 # ── 文件上传存储路径 ───────────────────────────────────────────────────────────
 file:
-  upload-dir: D:/fireworks -neighborhood-file   # 主图、视频、详情图根目录
+  upload-dir: D:/fireworks-neighborhood-file   # 主图存 images/，视频存 videos/，详情图存 descs/
 
 # ── JWT 配置 ──────────────────────────────────────────────────────────────────
 jwt:

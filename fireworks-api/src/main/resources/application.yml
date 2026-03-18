@@ -21,7 +21,7 @@ mybatis-plus:
 
 # 文件上传存储路径（与 admin 模块共用同一目录）
 file:
-  upload-dir: D:/fireworks -neighborhood-file
+  upload-dir: D:/fireworks-neighborhood-file
 
 # JWT 配置（C 端与后台可复用）
 jwt:
