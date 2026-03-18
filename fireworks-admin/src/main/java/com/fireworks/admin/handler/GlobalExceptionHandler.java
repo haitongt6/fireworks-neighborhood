@@ -3,6 +3,7 @@ package com.fireworks.admin.handler;
 import com.fireworks.common.api.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -11,6 +12,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 /**
  * 后台管理端全局异常处理器。
@@ -19,6 +21,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @Value("${spring.servlet.multipart.max-file-size}")
+    private String maxFileSize;
 
     @ExceptionHandler({UsernameNotFoundException.class, BadCredentialsException.class})
     public Result<?> handleLoginCredentialError(Exception e) {
@@ -37,6 +42,12 @@ public class GlobalExceptionHandler {
     public Result<?> handleAccessDeniedException(AccessDeniedException e) {
         log.warn("权限不足: {}", e.getMessage());
         return Result.forbidden("权限不足，禁止访问");
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public Result<?> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e) {
+        log.warn("文件上传超限: {}", e.getMessage());
+        return Result.failed("上传文件大小不能超过 " + maxFileSize);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

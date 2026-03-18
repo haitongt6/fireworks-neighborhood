@@ -19,6 +19,10 @@ mybatis-plus:
     db-config:
       id-type: auto
 
+# 文件上传存储路径（与 admin 模块共用同一目录）
+file:
+  upload-dir: D:/fireworks -neighborhood-file
+
 # JWT 配置（C 端与后台可复用）
 jwt:
   secret: fireworks-neighborhood-jwt-secret-key-please-change-in-production
@@ -31,7 +35,7 @@ jwt:
 # access-key-id 与 access-key-secret 必须通过环境变量或 application-local.yml 注入，切勿提交到仓库
 aliyun:
   sms:
-    access-key-id: ${ALIYUN_SMS_ACCESS_KEY_ID:}
-    access-key-secret: ${ALIYUN_SMS_ACCESS_KEY_SECRET:}
+    access-key-id: ${ALIYUN_ACCESS_KEY_ID:请通过环境变量或application-local.yml注入}
+    access-key-secret: ${ALIYUN_ACCESS_KEY_SECRET:请通过环境变量或application-local.yml注入}
     sign-name: 速通互联验证码
     template-code: 100001

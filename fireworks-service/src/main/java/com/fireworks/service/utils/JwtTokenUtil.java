@@ -37,9 +37,17 @@ public class JwtTokenUtil {
      * 根据 {@link UserDetails} 生成 JWT Token。
      */
     public String generateToken(UserDetails userDetails) {
+        return generateToken(userDetails.getUsername());
+    }
+
+    /**
+     * 根据 subject（如手机号、用户名）直接生成 JWT Token。
+     * 适用于 C 端验证码登录等不依赖 {@link UserDetails} 的场景。
+     */
+    public String generateToken(String subject) {
         Map<String, Object> claims = new HashMap<String, Object>(2);
         claims.put(CLAIM_KEY_CREATED, new Date());
-        return buildToken(claims, userDetails.getUsername());
+        return buildToken(claims, subject);
     }
 
     /**

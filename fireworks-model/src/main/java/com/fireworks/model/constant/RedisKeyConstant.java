@@ -15,4 +15,10 @@ public class RedisKeyConstant {
 
     /** 短信每日总量限制，sms:limit:daily:{phone} */
     public static final String SMS_LIMIT_DAILY_PREFIX = "sms:limit:daily:";
+
+    /** C 端会员登录会话，api:member:info:{phone}，滑动窗口 30 分钟 */
+    public static final String API_MEMBER_INFO_KEY = "api:member:info:";
+
+    /** 购物车 Hash，cart:{userId}，当天 23:59:59 过期 */
+    public static final String CART_KEY_PREFIX = "cart:";
 }

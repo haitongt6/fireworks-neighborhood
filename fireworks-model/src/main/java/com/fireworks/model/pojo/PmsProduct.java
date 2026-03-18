@@ -49,6 +49,9 @@ public class PmsProduct {
     /** 状态：1-上架，0-下架，2-待上架 */
     private Integer status;
 
+    /** 每人限购数量，NULL 表示不限购 */
+    private Integer limitPerUser;
+
     private Date createTime;
     private Date updateTime;
 }
