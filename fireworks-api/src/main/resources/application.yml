@@ -19,6 +19,12 @@ mybatis-plus:
     db-config:
       id-type: auto
 
+rocketmq:
+  name-server: 127.0.0.1:9876
+  producer:
+    group: cart-producer-group
+    send-message-timeout: 3000
+
 # 文件上传存储路径（与 admin 模块共用同一目录）
 file:
   upload-dir: D:/fireworks-neighborhood-file

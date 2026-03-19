@@ -18,6 +18,8 @@ dependencies {
 
     // Redisson 分布式锁（并发加购幂等）
     implementation 'org.redisson:redisson-spring-boot-starter:3.23.5'
+    // RocketMQ 顺序消息（购物车 Redis->MySQL 一致性）
+    implementation 'org.apache.rocketmq:rocketmq-spring-boot-starter:2.2.3'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

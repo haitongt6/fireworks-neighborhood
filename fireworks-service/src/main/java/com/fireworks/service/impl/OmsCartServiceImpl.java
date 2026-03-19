@@ -9,8 +9,8 @@ import com.fireworks.model.pojo.PmsProduct;
 import com.fireworks.model.vo.CartItemVO;
 import com.fireworks.service.OmsCartService;
 import com.fireworks.service.cart.CartItemEntry;
+import com.fireworks.service.cart.CartMqProducer;
 import com.fireworks.service.cart.CartRedisHelper;
-import com.fireworks.service.cart.OmsCartPersistTask;
 import com.fireworks.service.mapper.OmsCartItemMapper;
 import com.fireworks.service.mapper.PmsProductMapper;
 import org.redisson.api.RLock;
@@ -29,7 +29,8 @@ import java.util.concurrent.TimeUnit;
  * 购物车业务实现。
  * <p>
  * 读：Redis 优先，miss 则查 MySQL 并预热 Redis。<br>
- * 写：先更新 Redis，再异步落库 MySQL，保证最终一致性。
+ * 写：先更新 Redis，再通过 RocketMQ 顺序消息异步落库 MySQL，保证最终一致性。
+ * 同一用户的消息路由到同一 MessageQueue，Consumer 串行消费，落库顺序与 Redis 操作顺序一致。
  * </p>
  */
 @Service
@@ -41,18 +42,18 @@ public class OmsCartServiceImpl implements OmsCartService {
     private static final int DEFAULT_LIMIT = 99;
 
     private final CartRedisHelper cartRedisHelper;
-    private final OmsCartPersistTask persistTask;
+    private final CartMqProducer mqProducer;
     private final OmsCartItemMapper cartItemMapper;
     private final PmsProductMapper productMapper;
     private final RedissonClient redissonClient;
 
     public OmsCartServiceImpl(CartRedisHelper cartRedisHelper,
-                              OmsCartPersistTask persistTask,
+                              CartMqProducer mqProducer,
                               OmsCartItemMapper cartItemMapper,
                               PmsProductMapper productMapper,
                               RedissonClient redissonClient) {
         this.cartRedisHelper = cartRedisHelper;
-        this.persistTask = persistTask;
+        this.mqProducer = mqProducer;
         this.cartItemMapper = cartItemMapper;
         this.productMapper = productMapper;
         this.redissonClient = redissonClient;
@@ -103,7 +104,19 @@ public class OmsCartServiceImpl implements OmsCartService {
 
             // 锁保护内：读-计算-校验-写 串行执行，保证并发下数量准确
             CartItemEntry existing = cartRedisHelper.getItem(userId, productId);
-            int newQty = getNewQty(existing, addQty, product);
+            int currentQty = (existing != null) ? existing.getQuantity() : 0;
+            int newQty = currentQty + addQty;
+
+            // 库存校验
+            if (product.getStock() == null || newQty > product.getStock()) {
+                throw new IllegalArgumentException("库存不足");
+            }
+
+            // 限购校验
+            int limit = (product.getLimitPerUser() != null) ? product.getLimitPerUser() : DEFAULT_LIMIT;
+            if (newQty > limit) {
+                throw new IllegalArgumentException("超出限购数量，每人限购 " + limit + " 件");
+            }
 
             // 取第一张图作为快照
             String imageSnapshot = extractFirstImage(product.getImages());
@@ -114,8 +127,8 @@ public class OmsCartServiceImpl implements OmsCartService {
             // 1. 写 Redis
             cartRedisHelper.setItem(userId, productId, entry);
 
-            // 2. 异步落库
-            persistTask.asyncUpsert(userId, productId, newQty,
+            // 2. 发送顺序消息，由 Consumer 落库 MySQL
+            mqProducer.sendUpsert(userId, productId, newQty,
                     product.getPrice(), product.getTitle(), imageSnapshot);
 
             log.info("加购成功, userId={}, productId={}, newQty={}", userId, productId, newQty);
@@ -128,23 +141,6 @@ public class OmsCartServiceImpl implements OmsCartService {
                 lock.unlock();
             }
         }
-    }
-
-    private static int getNewQty(CartItemEntry existing, int addQty, PmsProduct product) {
-        int currentQty = (existing != null) ? existing.getQuantity() : 0;
-        int newQty = currentQty + addQty;
-
-        // 库存校验
-        if (product.getStock() == null || newQty > product.getStock()) {
-            throw new IllegalArgumentException("库存不足");
-        }
-
-        // 限购校验
-        int limit = (product.getLimitPerUser() != null) ? product.getLimitPerUser() : DEFAULT_LIMIT;
-        if (newQty > limit) {
-            throw new IllegalArgumentException("超出限购数量，每人限购 " + limit + " 件");
-        }
-        return newQty;
     }
 
     // ─────────────────────────────────────────────
@@ -183,8 +179,8 @@ public class OmsCartServiceImpl implements OmsCartService {
         // 1. 写 Redis
         cartRedisHelper.setItem(userId, productId, entry);
 
-        // 2. 异步落库
-        persistTask.asyncUpsert(userId, productId, newQty,
+        // 2. 发送顺序消息，由 Consumer 落库 MySQL
+        mqProducer.sendUpsert(userId, productId, newQty,
                 product.getPrice(), product.getTitle(), imageSnapshot);
 
         log.debug("修改数量成功, userId={}, productId={}, newQty={}", userId, productId, newQty);
@@ -201,8 +197,8 @@ public class OmsCartServiceImpl implements OmsCartService {
         // 1. 删 Redis
         cartRedisHelper.removeItem(userId, productId);
 
-        // 2. 异步落库
-        persistTask.asyncDelete(userId, productId);
+        // 2. 发送顺序消息，由 Consumer 落库 MySQL
+        mqProducer.sendDelete(userId, productId);
 
         log.debug("删除购物车单项成功, userId={}, productId={}", userId, productId);
     }
@@ -216,8 +212,8 @@ public class OmsCartServiceImpl implements OmsCartService {
         // 1. 清 Redis
         cartRedisHelper.clear(userId);
 
-        // 2. 异步落库
-        persistTask.asyncClear(userId);
+        // 2. 发送顺序消息，由 Consumer 落库 MySQL
+        mqProducer.sendClear(userId);
 
         log.debug("清空购物车成功, userId={}", userId);
     }
