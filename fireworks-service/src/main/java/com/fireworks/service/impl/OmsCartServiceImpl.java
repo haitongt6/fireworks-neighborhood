@@ -13,6 +13,8 @@ import com.fireworks.service.cart.CartRedisHelper;
 import com.fireworks.service.cart.OmsCartPersistTask;
 import com.fireworks.service.mapper.OmsCartItemMapper;
 import com.fireworks.service.mapper.PmsProductMapper;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 购物车业务实现。
@@ -41,15 +44,18 @@ public class OmsCartServiceImpl implements OmsCartService {
     private final OmsCartPersistTask persistTask;
     private final OmsCartItemMapper cartItemMapper;
     private final PmsProductMapper productMapper;
+    private final RedissonClient redissonClient;
 
     public OmsCartServiceImpl(CartRedisHelper cartRedisHelper,
                               OmsCartPersistTask persistTask,
                               OmsCartItemMapper cartItemMapper,
-                              PmsProductMapper productMapper) {
+                              PmsProductMapper productMapper,
+                              RedissonClient redissonClient) {
         this.cartRedisHelper = cartRedisHelper;
         this.persistTask = persistTask;
         this.cartItemMapper = cartItemMapper;
         this.productMapper = productMapper;
+        this.redissonClient = redissonClient;
     }
 
     // ─────────────────────────────────────────────
@@ -77,16 +83,54 @@ public class OmsCartServiceImpl implements OmsCartService {
         Long productId = param.getProductId();
         int addQty = param.getQuantity();
 
-        PmsProduct product = productMapper.selectById(productId);
-        if (product == null) {
-            throw new IllegalArgumentException("商品不存在");
-        }
-        if (!Integer.valueOf(1).equals(product.getStatus())) {
-            throw new IllegalArgumentException("商品已下架");
-        }
+        // 分布式锁：锁粒度为 userId + productId，防止同一用户同一商品并发加购数量不准
+        String lockKey = "cart:lock:" + userId + ":" + productId;
+        RLock lock = redissonClient.getLock(lockKey);
+        boolean locked = false;
+        try {
+            locked = lock.tryLock(3, 5, TimeUnit.SECONDS);
+            if (!locked) {
+                throw new IllegalStateException("操作频繁，请稍后重试");
+            }
 
-        // 计算累加后的总数量
-        CartItemEntry existing = cartRedisHelper.getItem(userId, productId);
+            PmsProduct product = productMapper.selectById(productId);
+            if (product == null) {
+                throw new IllegalArgumentException("商品不存在");
+            }
+            if (!Integer.valueOf(1).equals(product.getStatus())) {
+                throw new IllegalArgumentException("商品已下架");
+            }
+
+            // 锁保护内：读-计算-校验-写 串行执行，保证并发下数量准确
+            CartItemEntry existing = cartRedisHelper.getItem(userId, productId);
+            int newQty = getNewQty(existing, addQty, product);
+
+            // 取第一张图作为快照
+            String imageSnapshot = extractFirstImage(product.getImages());
+
+            CartItemEntry entry = new CartItemEntry(
+                    newQty, product.getPrice(), product.getTitle(), imageSnapshot);
+
+            // 1. 写 Redis
+            cartRedisHelper.setItem(userId, productId, entry);
+
+            // 2. 异步落库
+            persistTask.asyncUpsert(userId, productId, newQty,
+                    product.getPrice(), product.getTitle(), imageSnapshot);
+
+            log.info("加购成功, userId={}, productId={}, newQty={}", userId, productId, newQty);
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("加购被中断，请重试");
+        } finally {
+            if (locked && lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
+    }
+
+    private static int getNewQty(CartItemEntry existing, int addQty, PmsProduct product) {
         int currentQty = (existing != null) ? existing.getQuantity() : 0;
         int newQty = currentQty + addQty;
 
@@ -100,21 +144,7 @@ public class OmsCartServiceImpl implements OmsCartService {
         if (newQty > limit) {
             throw new IllegalArgumentException("超出限购数量，每人限购 " + limit + " 件");
         }
-
-        // 取第一张图作为快照
-        String imageSnapshot = extractFirstImage(product.getImages());
-
-        CartItemEntry entry = new CartItemEntry(
-                newQty, product.getPrice(), product.getTitle(), imageSnapshot);
-
-        // 1. 写 Redis
-        cartRedisHelper.setItem(userId, productId, entry);
-
-        // 2. 异步落库
-        persistTask.asyncUpsert(userId, productId, newQty,
-                product.getPrice(), product.getTitle(), imageSnapshot);
-
-        log.debug("加购成功, userId={}, productId={}, newQty={}", userId, productId, newQty);
+        return newQty;
     }
 
     // ─────────────────────────────────────────────

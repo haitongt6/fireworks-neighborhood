@@ -16,6 +16,9 @@ dependencies {
     implementation 'io.jsonwebtoken:jjwt:0.9.1'
     implementation 'com.aliyun:dypnsapi20170525:2.0.0'
 
+    // Redisson 分布式锁（并发加购幂等）
+    implementation 'org.redisson:redisson-spring-boot-starter:3.23.5'
+
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 }
