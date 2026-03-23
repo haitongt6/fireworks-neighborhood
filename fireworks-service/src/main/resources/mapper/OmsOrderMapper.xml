@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.fireworks.service.mapper.OmsOrderMapper">
+
+    <select id="selectOrderPage" resultType="com.fireworks.model.vo.OmsOrderListItemVO">
+        SELECT
+            o.id,
+            o.order_no AS orderNo,
+            o.user_id AS userId,
+            o.order_status AS orderStatus,
+            o.pay_status AS payStatus,
+            o.source_type AS sourceType,
+            o.total_amount AS totalAmount,
+            o.pay_amount AS payAmount,
+            o.item_count AS itemCount,
+            o.expire_time AS expireTime,
+            o.pay_time AS payTime,
+            o.create_time AS createTime
+        FROM oms_order o
+        <where>
+            o.deleted = 0
+            <if test="param.orderNo != null and param.orderNo != ''">
+                AND o.order_no = #{param.orderNo}
+            </if>
+            <if test="param.userId != null">
+                AND o.user_id = #{param.userId}
+            </if>
+            <if test="param.orderStatus != null">
+                AND o.order_status = #{param.orderStatus}
+            </if>
+            <if test="param.payStatus != null">
+                AND o.pay_status = #{param.payStatus}
+            </if>
+            <if test="param.createTimeStart != null and param.createTimeStart != ''">
+                AND o.create_time &gt;= CONCAT(#{param.createTimeStart}, ' 00:00:00')
+            </if>
+            <if test="param.createTimeEnd != null and param.createTimeEnd != ''">
+                AND o.create_time &lt;= CONCAT(#{param.createTimeEnd}, ' 23:59:59')
+            </if>
+        </where>
+        ORDER BY o.create_time DESC
+    </select>
+
+</mapper>
