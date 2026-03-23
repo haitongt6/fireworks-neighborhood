@@ -3,6 +3,7 @@ package com.fireworks.service.config;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -13,8 +14,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 /**
  * Redis 配置类。
  * <p>
- * 替换默认的 JDK 序列化方式，Key 使用 String 序列化，Value 使用 Jackson JSON 序列化，
- * 保证存入 Redis 的数据可读且跨语言兼容。
+ * 替换默认的 JDK 序列化方式，Key 使用 String 序列化，Value 使用 Jackson JSON 序列化。
  * </p>
  */
 @Configuration

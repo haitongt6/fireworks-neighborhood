@@ -9,6 +9,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'com.baomidou:mybatis-plus-boot-starter:3.5.7'
+
+    // Swagger 注解（仅编译期，不引入运行时 Swagger UI）
+    compileOnly 'io.springfox:springfox-swagger2:3.0.0'
 }
 
 bootJar {

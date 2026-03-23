@@ -1,6 +1,7 @@
 package com.fireworks.admin.handler;
 
 import com.fireworks.common.api.Result;
+import com.fireworks.service.exception.BizException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -48,6 +49,12 @@ public class GlobalExceptionHandler {
     public Result<?> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e) {
         log.warn("文件上传超限: {}", e.getMessage());
         return Result.failed("上传文件大小不能超过 " + maxFileSize);
+    }
+
+    @ExceptionHandler(BizException.class)
+    public Result<?> handleBizException(BizException e) {
+        log.warn("业务异常: {}", e.getMessage());
+        return Result.failed(e.getMessage());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

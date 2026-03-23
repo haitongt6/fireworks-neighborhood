@@ -4,6 +4,7 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * 烟火邻里 - C 端 API 启动入口（端口 8080）。
@@ -16,6 +17,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @SpringBootApplication(scanBasePackages = {"com.fireworks.api", "com.fireworks.service"})
 @MapperScan("com.fireworks.service.mapper")
 @EnableAsync
+@EnableScheduling
 public class FireworksApiApplication {
 
     public static void main(String[] args) {

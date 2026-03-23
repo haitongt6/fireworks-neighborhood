@@ -48,4 +48,28 @@
         ORDER BY p.create_time DESC
     </select>
 
+    <update id="lockStock">
+        UPDATE pms_product
+        SET lock_stock = lock_stock + #{quantity}
+        WHERE id = #{productId}
+          AND status = 1
+          AND (stock - lock_stock) &gt;= #{quantity}
+    </update>
+
+    <update id="confirmStock">
+        UPDATE pms_product
+        SET stock = stock - #{quantity},
+            lock_stock = lock_stock - #{quantity},
+            sale = sale + #{quantity}
+        WHERE id = #{productId}
+          AND lock_stock &gt;= #{quantity}
+    </update>
+
+    <update id="releaseStock">
+        UPDATE pms_product
+        SET lock_stock = lock_stock - #{quantity}
+        WHERE id = #{productId}
+          AND lock_stock &gt;= #{quantity}
+    </update>
+
 </mapper>

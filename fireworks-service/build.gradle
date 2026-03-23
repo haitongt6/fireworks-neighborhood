@@ -17,7 +17,12 @@ dependencies {
     implementation 'com.aliyun:dypnsapi20170525:2.0.0'
 
     // Redisson 分布式锁（并发加购幂等）
-    implementation 'org.redisson:redisson-spring-boot-starter:3.23.5'
+    implementation('org.redisson:redisson-spring-boot-starter:3.23.5') {
+        exclude group: 'org.redisson', module: 'redisson-spring-data-31'
+    }
+    // 与 Spring Boot 2.7 / Spring Data Redis 2.7 对齐
+    implementation 'org.redisson:redisson-spring-data-27:3.23.5'
+
     // RocketMQ 顺序消息（购物车 Redis->MySQL 一致性）
     implementation 'org.apache.rocketmq:rocketmq-spring-boot-starter:2.2.3'
 

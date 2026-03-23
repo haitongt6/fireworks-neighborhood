@@ -1,4 +1,6 @@
 dependencies {
+    // Swagger 注解（仅注解包，不含 Web 依赖）
+    compileOnly 'io.springfox:springfox-swagger2:3.0.0'
     // MyBatis-Plus 注解（@TableName、@TableId 等），仅需注解包，不引入运行时依赖
     implementation 'com.baomidou:mybatis-plus-annotation:3.5.7'
     implementation 'org.springframework.boot:spring-boot-starter-validation'

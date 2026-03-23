@@ -46,6 +46,12 @@ public class PmsProduct {
     /** 库存 */
     private Integer stock;
 
+    /** 锁定库存（已下单未支付） */
+    private Integer lockStock;
+
+    /** 销量 */
+    private Integer sale;
+
     /** 状态：1-上架，0-下架，2-待上架 */
     private Integer status;
 

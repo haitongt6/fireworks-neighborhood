@@ -3,6 +3,7 @@ package com.fireworks.admin;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * 烟火邻里 - 后台管理端启动入口（端口 8081）。
@@ -17,6 +18,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  */
 @SpringBootApplication(scanBasePackages = {"com.fireworks.admin", "com.fireworks.service", "com.fireworks.common"})
 @MapperScan("com.fireworks.service.mapper")
+@EnableScheduling
 public class FireworksAdminApplication {
 
     public static void main(String[] args) {

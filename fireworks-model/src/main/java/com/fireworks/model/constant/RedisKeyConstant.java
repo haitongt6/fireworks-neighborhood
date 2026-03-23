@@ -21,4 +21,25 @@ public class RedisKeyConstant {
 
     /** 购物车 Hash，cart:{userId}，当天 23:59:59 过期 */
     public static final String CART_KEY_PREFIX = "cart:";
+
+    /** 订单确认 submitToken：order:submit:token:{userId}:{token} */
+    public static final String ORDER_SUBMIT_TOKEN_PREFIX = "order:submit:token:";
+
+    /** 订单提交锁：order:submit:lock:{userId} */
+    public static final String ORDER_SUBMIT_LOCK_PREFIX = "order:submit:lock:";
+
+    /** 订单支付锁：order:pay:lock:{orderNo} */
+    public static final String ORDER_PAY_LOCK_PREFIX = "order:pay:lock:";
+
+    /** 订单关闭锁：order:close:lock:{orderNo} */
+    public static final String ORDER_CLOSE_LOCK_PREFIX = "order:close:lock:";
+
+    /** 订单过期 ZSet：score=过期时间戳，member=orderNo */
+    public static final String ORDER_EXPIRE_ZSET = "order:expire:zset";
+
+    /** 订单号序列：order:seq:{yyyyMMdd} */
+    public static final String ORDER_SEQ_PREFIX = "order:seq:";
+
+    /** 支付单号序列：pay:seq:{yyyyMMdd} */
+    public static final String PAY_SEQ_PREFIX = "pay:seq:";
 }

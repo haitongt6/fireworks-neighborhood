@@ -1,6 +1,7 @@
 package com.fireworks.api.handler;
 
 import com.fireworks.common.api.Result;
+import com.fireworks.service.exception.BizException;
 import com.fireworks.service.exception.SmsLimitException;
 import com.fireworks.service.exception.SmsSendException;
 import org.slf4j.Logger;
@@ -18,6 +19,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(BizException.class)
+    public Result<?> handleBizException(BizException e) {
+        log.warn("业务异常: {}", e.getMessage());
+        return Result.failed(e.getMessage());
+    }
 
     @ExceptionHandler(SmsLimitException.class)
     public Result<?> handleSmsLimitException(SmsLimitException e) {

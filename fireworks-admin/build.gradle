@@ -12,6 +12,9 @@ dependencies {
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-mysql'
 
+    // Swagger 注解（仅编译期，不引入运行时 Swagger UI）
+    compileOnly 'io.springfox:springfox-swagger2:3.0.0'
+
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 }

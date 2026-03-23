@@ -44,6 +44,10 @@ subprojects {
         imports {
             mavenBom "org.springframework.boot:spring-boot-dependencies:2.7.18"
         }
+        dependencies {
+            // 临时覆盖：2.7.18 在 DefaultedRedisConnection 的 zRangeByScore/zPopMin 存在递归问题
+            dependency 'org.springframework.data:spring-data-redis:2.7.17'
+        }
     }
 
     dependencies {

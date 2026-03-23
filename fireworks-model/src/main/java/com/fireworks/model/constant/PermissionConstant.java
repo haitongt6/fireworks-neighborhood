@@ -65,4 +65,16 @@ public final class PermissionConstant {
     public static final String CATEGORY_EDIT = "pms:category:edit";
     /** 删除类目 */
     public static final String CATEGORY_DELETE = "pms:category:delete";
+
+    // ---------- 订单 ----------
+    /** 订单列表 */
+    public static final String ORDER_LIST = "oms:order:list";
+    /** 订单详情 */
+    public static final String ORDER_DETAIL = "oms:order:detail";
+    /** 关闭订单 */
+    public static final String ORDER_CLOSE = "oms:order:close";
+
+    // ---------- 支付 ----------
+    /** 模拟支付成功 */
+    public static final String PAY_MOCK_SUCCESS = "oms:pay:mock:success";
 }

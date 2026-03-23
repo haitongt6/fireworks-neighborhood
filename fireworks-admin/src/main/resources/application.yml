@@ -1,7 +1,7 @@
 server:
   port: 8081
 
-# ── 日志配置 ──────────────────────────────────────────────────────────────────
+# 日志配置
 logging:
   level:
     com.fireworks: debug
@@ -9,52 +9,51 @@ logging:
     com.baomidou.mybatisplus: debug
     org.springframework.security.web.access: TRACE
 
-
-
-# ── 数据源配置 ────────────────────────────────────────────────────────────────
 spring:
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
   servlet:
     multipart:
-      max-file-size: 10MB      # 单个文件最大 10M
-      max-request-size: 10MB  # 整次请求最大 10M
+      max-file-size: 10MB
+      max-request-size: 10MB
   datasource:
     url: jdbc:mysql://localhost:3306/fireworks_neighborhood?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
-  # Flyway 数据库迁移配置
   flyway:
     enabled: false
-    baseline-on-migrate: true   # 已有库且无 Flyway 历史表时，自动建立基线后执行迁移
-    baseline-version: 0         # 基线版本，便于 V1 等迁移在首次接入时正常执行
+    baseline-on-migrate: true
+    baseline-version: 0
     locations: classpath:db/migration
   redis:
     host: 127.0.0.1
     port: 6379
 
-# ── MyBatis-Plus 配置 ─────────────────────────────────────────────────────────
+# RocketMQ 配置
+# admin 模块本身不发送购物车 MQ 消息，但 scanBasePackages 扫描到了 CartMqProducer，
+# RocketMQAutoConfiguration#defaultMQProducer 需要 rocketmq.producer.group 才能创建 RocketMQTemplate Bean。
+# 使用独立的 group 名避免与 api 模块冲突。
+rocketmq:
+  name-server: 127.0.0.1:9876
+  producer:
+    group: cart-producer-group-admin
+    send-message-timeout: 3000
+
 mybatis-plus:
-  # 扫描所有 JAR 包（含 fireworks-service 模块）classpath 下的 mapper XML 文件
   mapper-locations: classpath*:mapper/**/*.xml
   configuration:
-    # 开启驼峰命名与下划线字段的自动映射
     map-underscore-to-camel-case: true
   global-config:
     db-config:
-      # 主键策略：数据库自增
       id-type: auto
 
-# ── 文件上传存储路径 ───────────────────────────────────────────────────────────
 file:
-  upload-dir: D:/fireworks-neighborhood-file   # 主图存 images/，视频存 videos/，详情图存 descs/
+  upload-dir: D:/fireworks-neighborhood-file
 
-# ── JWT 配置 ──────────────────────────────────────────────────────────────────
 jwt:
-  # 签名密钥，生产环境请替换为 64 位以上的强随机字符串，勿硬编码提交到代码仓库
   secret: fireworks-neighborhood-jwt-secret-key-please-change-in-production
-  # Token 有效期（单位：秒），默认 86400 = 24 小时
   expiration: 86400
-  # 存放 Token 的请求头名称
   tokenHeader: Authorization
-  # Token 前缀（注意末尾保留一个空格）
   tokenHead: "Bearer "
