@@ -41,7 +41,7 @@ public class ApiOrderController {
     }
 
     @GetMapping("/confirm")
-    @ApiOperation(value = "订单确认页", notes = "从购物车读取有效商品，校验库存/限购，生成 submitToken")
+    @ApiOperation(value = "订单确认页", notes = "从购物车读取商品，批量校验；有效行写入 items，库存/限购/下架/价格变动等写入 issues，并生成 submitToken。失败时：code=4001 购物车为空；code=4002 所选商品均不在购物车；其它业务失败 code=500")
     public Result<OrderConfirmVO> confirm(
             @ApiParam(value = "仅结算商品ID列表，逗号分隔") @RequestParam(required = false) List<Long> productIds) {
         return Result.success(orderService.confirm(currentUserId(),

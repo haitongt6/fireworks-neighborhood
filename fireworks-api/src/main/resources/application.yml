@@ -22,6 +22,9 @@ spring:
   redis:
     host: 127.0.0.1
     port: 6379
+    password: tht8664
+    # Redisson 分布式锁看门狗：lockWatchdogTimeout 在 fireworks-service 的 RedissonWatchdogConfig 中显式配置（默认 30s）。
+    # 仅对「未指定 leaseTime」的 tryLock(lock, wait, unit) 生效；tryLock(wait, lease, unit) 固定租约模式仍不续期。
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
@@ -48,12 +51,16 @@ jwt:
   tokenHeader: Authorization
   tokenHead: "Bearer "
 
+# 下单防重复：会消费 submitToken，同一 Token 不可再次提交。DevTools 重放 POST /api/order/submit 时若需相同 body 多次执行，可临时改为 false（仅本地联调，切勿用于生产）
+order:
+  submit-token-verify: true
+
 # 阿里云号码认证服务（dypnsapi）配置，使用 SendSmsVerifyCode 接口发送验证码
 # 验证码模板需包含 ${code}、${min} 变量，本系统传 {"code":"123456","min":"5"}
 # access-key-id 与 access-key-secret 必须通过环境变量或 application-local.yml 注入，切勿提交到仓库
 aliyun:
   sms:
-    access-key-id: ${ALIYUN_SMS_ACCESS_KEY_ID}
-    access-key-secret: ${ALIYUN_SMS_ACCESS_KEY_SECRET}
+    access-key-id: ${code}
+    access-key-secret: ${min}
     sign-name: 速通互联验证码
     template-code: 100001

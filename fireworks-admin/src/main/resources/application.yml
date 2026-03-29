@@ -30,6 +30,8 @@ spring:
   redis:
     host: 127.0.0.1
     port: 6379
+    password: tht8664
+    # Redisson 看门狗：见 fireworks-service RedissonWatchdogConfig（lockWatchdogTimeout 默认 30s）
 
 # RocketMQ 配置
 # admin 模块本身不发送购物车 MQ 消息，但 scanBasePackages 扫描到了 CartMqProducer，

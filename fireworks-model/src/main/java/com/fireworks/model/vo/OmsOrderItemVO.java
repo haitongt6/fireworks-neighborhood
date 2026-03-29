@@ -30,4 +30,10 @@ public class OmsOrderItemVO {
 
     @ApiModelProperty(value = "小计金额")
     private BigDecimal totalAmount;
+
+    @ApiModelProperty(value = "是否相对购物车价格快照有变动，仅确认页可能为 true")
+    private Boolean priceChanged;
+
+    @ApiModelProperty(value = "购物车价格快照，仅 priceChanged 为 true 时有值")
+    private BigDecimal previousPrice;
 }

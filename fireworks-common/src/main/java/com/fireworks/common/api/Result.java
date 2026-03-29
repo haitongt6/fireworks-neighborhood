@@ -70,6 +70,19 @@ public class Result<T> {
     }
 
     /**
+     * 操作失败，自定义业务码（如订单确认页 4001/4002）。
+     *
+     * @param code    非 200 的业务状态码
+     * @param message 错误描述
+     */
+    public static <T> Result<T> failed(int code, String message) {
+        Result<T> result = new Result<T>();
+        result.setCode(code);
+        result.setMessage(message);
+        return result;
+    }
+
+    /**
      * 未认证（Token 不存在或已失效）。
      *
      * @param message 错误描述

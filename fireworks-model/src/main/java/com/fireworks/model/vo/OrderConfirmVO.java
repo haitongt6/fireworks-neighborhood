@@ -28,4 +28,7 @@ public class OrderConfirmVO {
 
     @ApiModelProperty(value = "有效商品列表")
     private List<OmsOrderItemVO> items;
+
+    @ApiModelProperty(value = "异常提示列表：库存不足、超限购、下架、价格变动等，供前端引导用户处理")
+    private List<OrderConfirmIssueVO> issues;
 }

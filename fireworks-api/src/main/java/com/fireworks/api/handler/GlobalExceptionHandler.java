@@ -22,6 +22,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BizException.class)
     public Result<?> handleBizException(BizException e) {
+        if (e.getBizCode() != 0) {
+            log.warn("业务异常: code={}, message={}", e.getBizCode(), e.getMessage());
+            return Result.failed(e.getBizCode(), e.getMessage());
+        }
         log.warn("业务异常: {}", e.getMessage());
         return Result.failed(e.getMessage());
     }

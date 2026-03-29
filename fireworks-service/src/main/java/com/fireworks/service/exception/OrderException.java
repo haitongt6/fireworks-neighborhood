@@ -8,4 +8,8 @@ public class OrderException extends BizException {
     public OrderException(String message) {
         super(message);
     }
+
+    public OrderException(int bizCode, String message) {
+        super(bizCode, message);
+    }
 }

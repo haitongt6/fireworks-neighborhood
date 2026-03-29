@@ -3,6 +3,7 @@ package com.fireworks.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fireworks.model.constant.OrderConfirmApiCode;
 import com.fireworks.model.constant.OrderOperateTypeEnum;
 import com.fireworks.model.constant.OrderSourceTypeEnum;
 import com.fireworks.model.constant.OrderStatusEnum;
@@ -22,6 +23,7 @@ import com.fireworks.model.pojo.PmsProduct;
 import com.fireworks.model.vo.OmsOrderDetailVO;
 import com.fireworks.model.vo.OmsOrderItemVO;
 import com.fireworks.model.vo.OmsOrderListItemVO;
+import com.fireworks.model.vo.OrderConfirmIssueVO;
 import com.fireworks.model.vo.OrderConfirmVO;
 import com.fireworks.model.vo.OrderSubmitVO;
 import com.fireworks.model.vo.PageResult;
@@ -44,21 +46,30 @@ import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Service
 public class OmsOrderServiceImpl implements OmsOrderService {
 
     private static final Logger log = LoggerFactory.getLogger(OmsOrderServiceImpl.class);
     private static final long ORDER_EXPIRE_MILLIS = 15 * 60 * 1000L;
+
+    @Value("${order.submit-token-verify:true}")
+    private boolean submitTokenVerify;
 
     private final OmsOrderMapper orderMapper;
     private final OmsOrderItemMapper orderItemMapper;
@@ -88,26 +99,86 @@ public class OmsOrderServiceImpl implements OmsOrderService {
 
     @Override
     public OrderConfirmVO confirm(Long userId, List<Long> productIds) {
+        //从redis获取购物车全部数据
         Map<String, CartItemEntry> cart = cartRedisHelper.getCart(userId);
-        List<OmsOrderItemVO> items = new ArrayList<OmsOrderItemVO>();
+        if (cart.isEmpty()) {
+            throw new OrderException(OrderConfirmApiCode.CART_EMPTY, "购物车是空的，请先加购商品后再结算");
+        }
+        final Set<Long> idFilter = (productIds != null && !productIds.isEmpty())
+                ? new HashSet<>(productIds)
+                : null;
+        List<Map.Entry<String, CartItemEntry>> entries = cart.entrySet().stream()
+                .filter(e -> idFilter == null || idFilter.contains(Long.valueOf(e.getKey())))
+                .collect(Collectors.toList());
+        if (entries.isEmpty()) {
+            throw new OrderException(OrderConfirmApiCode.SELECTION_NOT_IN_CART,
+                    "所选商品均不在购物车中，请返回购物车重新勾选后再结算");
+        }
+        List<OmsOrderItemVO> items = new ArrayList<>();
+        List<OrderConfirmIssueVO> issues = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
         int itemCount = 0;
-        for (Map.Entry<String, CartItemEntry> e : cart.entrySet()) {
+        List<Long> batchIds = new ArrayList<>(entries.size());
+        for (Map.Entry<String, CartItemEntry> e : entries) {
+            batchIds.add(Long.valueOf(e.getKey()));
+        }
+        List<PmsProduct> productRows = productMapper.selectBatchIds(batchIds);
+        Map<Long, PmsProduct> productMap = new HashMap<Long, PmsProduct>();
+        for (PmsProduct p : productRows) {
+            productMap.put(p.getId(), p);
+        }
+        for (Map.Entry<String, CartItemEntry> e : entries) {
             Long pid = Long.valueOf(e.getKey());
-            if (productIds != null && !productIds.isEmpty() && !productIds.contains(pid)) {
+            CartItemEntry ce = e.getValue();
+            PmsProduct p = productMap.get(pid);
+            String snapTitle = ce.getTitleSnapshot();
+            String displayTitle = (snapTitle != null && !snapTitle.trim().isEmpty()) ? snapTitle.trim() : "";
+            if (p == null || !Integer.valueOf(1).equals(p.getStatus())) {
+                OrderConfirmIssueVO issue = new OrderConfirmIssueVO();
+                issue.setIssueType("PRODUCT_OFFLINE");
+                issue.setProductId(pid);
+                issue.setProductImage(ce.getImageSnapshot());
+                issue.setCartQuantity(ce.getQuantity());
+                if (p != null) {
+                    issue.setProductTitle(p.getTitle());
+                    issue.setMessage("商品已下架，请返回购物车移除或更换：" + p.getTitle());
+                } else {
+                    issue.setProductTitle(displayTitle.isEmpty() ? "商品" + pid : displayTitle);
+                    issue.setMessage("商品不存在或已删除，请返回购物车移除：" + issue.getProductTitle());
+                }
+                issues.add(issue);
                 continue;
             }
-            CartItemEntry ce = e.getValue();
-            PmsProduct p = productMapper.selectById(pid);
-            if (p == null || !Integer.valueOf(1).equals(p.getStatus())) {
-                continue;
+            if (displayTitle.isEmpty()) {
+                displayTitle = p.getTitle();
             }
             int ls = p.getLockStock() == null ? 0 : p.getLockStock();
             int st = p.getStock() == null ? 0 : p.getStock();
-            if ((st - ls) < ce.getQuantity()) {
+            int available = st - ls;
+            if (available < ce.getQuantity()) {
+                OrderConfirmIssueVO issue = new OrderConfirmIssueVO();
+                issue.setIssueType("INSUFFICIENT_STOCK");
+                issue.setProductId(pid);
+                issue.setProductTitle(p.getTitle());
+                issue.setProductImage(ce.getImageSnapshot());
+                issue.setCartQuantity(ce.getQuantity());
+                issue.setAvailableQuantity(Math.max(available, 0));
+                issue.setMessage(String.format("「%s」库存不足，当前可售 %d 件，购物车中为 %d 件，请返回购物车调整数量",
+                        p.getTitle(), Math.max(available, 0), ce.getQuantity()));
+                issues.add(issue);
                 continue;
             }
             if (p.getLimitPerUser() != null && ce.getQuantity() > p.getLimitPerUser()) {
+                OrderConfirmIssueVO issue = new OrderConfirmIssueVO();
+                issue.setIssueType("EXCEED_LIMIT");
+                issue.setProductId(pid);
+                issue.setProductTitle(p.getTitle());
+                issue.setProductImage(ce.getImageSnapshot());
+                issue.setCartQuantity(ce.getQuantity());
+                issue.setLimitPerUser(p.getLimitPerUser());
+                issue.setMessage(String.format("「%s」超出限购，每人限购 %d 件，请返回购物车减少数量",
+                        p.getTitle(), p.getLimitPerUser()));
+                issues.add(issue);
                 continue;
             }
             OmsOrderItemVO iv = new OmsOrderItemVO();
@@ -118,10 +189,32 @@ public class OmsOrderServiceImpl implements OmsOrderService {
             iv.setQuantity(ce.getQuantity());
             BigDecimal lt = p.getPrice().multiply(BigDecimal.valueOf(ce.getQuantity()));
             iv.setTotalAmount(lt);
+            BigDecimal snapPrice = ce.getPriceSnapshot();
+            if (snapPrice != null && p.getPrice() != null && snapPrice.compareTo(p.getPrice()) != 0) {
+                iv.setPriceChanged(Boolean.TRUE);
+                iv.setPreviousPrice(snapPrice);
+                OrderConfirmIssueVO priceIssue = new OrderConfirmIssueVO();
+                priceIssue.setIssueType("PRICE_CHANGED");
+                priceIssue.setProductId(pid);
+                priceIssue.setProductTitle(p.getTitle());
+                priceIssue.setProductImage(ce.getImageSnapshot());
+                priceIssue.setCartQuantity(ce.getQuantity());
+                priceIssue.setPreviousPrice(snapPrice);
+                priceIssue.setCurrentPrice(p.getPrice());
+                priceIssue.setMessage(String.format("「%s」价格已更新：加入购物车时 ¥%s，当前 ¥%s，以下单页金额为准",
+                        p.getTitle(), snapPrice.stripTrailingZeros().toPlainString(),
+                        p.getPrice().stripTrailingZeros().toPlainString()));
+                issues.add(priceIssue);
+            }
             items.add(iv);
             totalAmount = totalAmount.add(lt);
             itemCount += ce.getQuantity();
         }
+        return buildConfirmVo(userId, items, issues, totalAmount, itemCount);
+    }
+
+    private OrderConfirmVO buildConfirmVo(Long userId, List<OmsOrderItemVO> items,
+            List<OrderConfirmIssueVO> issues, BigDecimal totalAmount, int itemCount) {
         String token = orderRedisHelper.createSubmitToken(userId);
         OrderConfirmVO vo = new OrderConfirmVO();
         vo.setSubmitToken(token);
@@ -129,6 +222,7 @@ public class OmsOrderServiceImpl implements OmsOrderService {
         vo.setItemCount(itemCount);
         vo.setTotalAmount(totalAmount);
         vo.setItems(items);
+        vo.setIssues(issues.isEmpty() ? Collections.emptyList() : issues);
         return vo;
     }
 
@@ -137,7 +231,12 @@ public class OmsOrderServiceImpl implements OmsOrderService {
         RLock lock = redissonClient.getLock(orderRedisHelper.buildSubmitLockKey(userId));
         boolean locked = false;
         try {
-            locked = lock.tryLock(3, 5, TimeUnit.SECONDS);
+            //这里的三个参数分别代表的什么意思？
+            // 原 tryLock(3, 5, TimeUnit.SECONDS)：① waitTime 最长等待抢锁；② leaseTime 锁在 Redis 的固定 TTL，到期强制释放且不续期（不看门狗）；③ 时间单位。
+            // 缺点：业务若超过 leaseTime，其它线程可再抢到锁，与互斥语义冲突。
+            // 现改为 tryLock(3, TimeUnit.SECONDS)：仅限制等待时间；不指定 leaseTime，由看门狗按 lockWatchdogTimeout 自动续期直至 unlock（见 RedissonWatchdogConfig）。
+            //tryLock(3, 5, TimeUnit.SECONDS); 该方式，若业务时间超过5秒，会自动释放锁，不会自动续期，配置了看门狗机制，移除显示指定的锁的过期时间，确保幂等
+            locked = lock.tryLock(3, TimeUnit.SECONDS);
             if (!locked) {
                 throw new RepeatSubmitException("操作频繁，请稍后重试");
             }
@@ -154,11 +253,13 @@ public class OmsOrderServiceImpl implements OmsOrderService {
 
     @Transactional(rollbackFor = Exception.class)
     public OrderSubmitVO doSubmit(Long userId, OrderSubmitParam param) {
-        if (!orderRedisHelper.consumeSubmitToken(userId, param.getSubmitToken())) {
-            throw new RepeatSubmitException("请勿重复提交订单");
+        if (submitTokenVerify) {
+            if (!orderRedisHelper.consumeSubmitToken(userId, param.getSubmitToken())) {
+                throw new RepeatSubmitException("请勿重复提交订单");
+            }
         }
         List<OrderItemSubmitParam> submitItems = param.getItems();
-        List<OmsOrderItem> orderItems = new ArrayList<OmsOrderItem>();
+        List<OmsOrderItem> orderItems = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
         int itemCount = 0;
         Date expireTime = new Date(System.currentTimeMillis() + ORDER_EXPIRE_MILLIS);
@@ -173,6 +274,7 @@ public class OmsOrderServiceImpl implements OmsOrderService {
             }
             int ls = p.getLockStock() == null ? 0 : p.getLockStock();
             int st = p.getStock() == null ? 0 : p.getStock();
+            //这里也有并发条件下 判断库存是准确的吗？ 大型电商项目中是如何做的？
             if ((st - ls) < item.getQuantity()) {
                 throw new StockException("商品库存不足：" + p.getTitle());
             }
