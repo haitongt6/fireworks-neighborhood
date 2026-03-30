@@ -20,5 +20,7 @@ public class ApiProductDetailVO {
     private String detailPics;
     private BigDecimal price;
     private Integer stock;
+    /** 销量（已售件数） */
+    private Integer sale;
     private Integer status;
 }

@@ -25,10 +25,11 @@ public class ApiPmsProductController {
     }
 
     /**
-     * 分页查询商品列表，默认仅返回上架商品（status=1）。
+     * 分页查询商品列表，仅返回上架商品（status=1），忽略请求中的 status，避免下架/待上架商品暴露给 C 端。
      */
     @GetMapping("/product/list")
     public Result<PageResult<PmsProductListVO>> listPage(PmsProductQueryParam param) {
+        param.setStatus(1);
         return Result.success(pmsProductService.listPage(param));
     }
 

@@ -14,6 +14,7 @@
             p.images AS images,
             p.price,
             IFNULL(p.stock, 0) AS stock,
+            IFNULL(p.sale, 0) AS sale,
             p.status,
             p.create_time AS createTime,
             p.update_time AS updateTime

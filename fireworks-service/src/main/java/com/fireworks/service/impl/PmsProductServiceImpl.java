@@ -40,9 +40,6 @@ public class PmsProductServiceImpl implements PmsProductService {
         if (param.getPageSize() == null || param.getPageSize() < 1) {
             param.setPageSize(10);
         }
-        if (param.getStatus() == null) {
-            param.setStatus(1);
-        }
         Page<PmsProductListVO> page = new Page<>(param.getPageNum(), param.getPageSize());
         IPage<PmsProductListVO> result = productMapper.selectProductListPage(page, param);
         return new PageResult<>(result.getRecords(), result.getTotal());

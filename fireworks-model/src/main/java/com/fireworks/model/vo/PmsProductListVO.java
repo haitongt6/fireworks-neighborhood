@@ -26,6 +26,8 @@ public class PmsProductListVO {
     private BigDecimal price;
     /** 总库存 */
     private Integer stock;
+    /** 销量（已售件数） */
+    private Integer sale;
     /** 状态：1-上架，0-下架，2-待上架 */
     private Integer status;
     private Date createTime;
