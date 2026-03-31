@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fireworks.service.mapper.OmsCartItemMapper">
+
+    <!--
+      单条 upsert，减少一次 select；依赖 oms_cart_item.uk_user_product(user_id, product_id)。
+      与 CartPersistConsumer#handleUpsert 语义一致（数量与快照字段覆盖更新）。
+    -->
+    <insert id="upsert">
+        INSERT INTO oms_cart_item (user_id, product_id, quantity, price_snapshot, title_snapshot, image_snapshot)
+        VALUES (#{userId}, #{productId}, #{quantity}, #{priceSnapshot}, #{titleSnapshot}, #{imageSnapshot})
+        ON DUPLICATE KEY UPDATE
+            quantity = VALUES(quantity),
+            price_snapshot = VALUES(price_snapshot),
+            title_snapshot = VALUES(title_snapshot),
+            image_snapshot = VALUES(image_snapshot)
+    </insert>
+</mapper>

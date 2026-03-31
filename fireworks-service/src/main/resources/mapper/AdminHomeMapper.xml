@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.fireworks.service.mapper.AdminHomeMapper">
+
+    <select id="selectTotalSalesAmount" resultType="java.math.BigDecimal">
+        SELECT IFNULL(SUM(o.pay_amount), 0)
+        FROM oms_order o
+        <where>
+            o.deleted = 0
+            AND o.order_status  IN (1,4)
+            <if test="param.startTime != null and param.startTime != ''">
+                AND o.create_time &gt;= CONCAT(#{param.startTime}, ' 00:00:00')
+            </if>
+            <if test="param.endTime != null and param.endTime != ''">
+                AND o.create_time &lt;= CONCAT(#{param.endTime}, ' 23:59:59')
+            </if>
+        </where>
+    </select>
+
+    <select id="selectOrderStatusCount" resultType="java.util.HashMap">
+        SELECT
+            o.order_status AS orderStatus,
+            COUNT(1) AS count
+        FROM oms_order o
+        <where>
+            o.deleted = 0
+            <if test="param.startTime != null and param.startTime != ''">
+                AND o.create_time &gt;= CONCAT(#{param.startTime}, ' 00:00:00')
+            </if>
+            <if test="param.endTime != null and param.endTime != ''">
+                AND o.create_time &lt;= CONCAT(#{param.endTime}, ' 23:59:59')
+            </if>
+        </where>
+        GROUP BY o.order_status
+    </select>
+
+    <select id="selectNewMemberCount" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM ums_member m
+        <where>
+            1 = 1
+            <if test="param.startTime != null and param.startTime != ''">
+                AND m.create_time &gt;= CONCAT(#{param.startTime}, ' 00:00:00')
+            </if>
+            <if test="param.endTime != null and param.endTime != ''">
+                AND m.create_time &lt;= CONCAT(#{param.endTime}, ' 23:59:59')
+            </if>
+        </where>
+    </select>
+
+    <select id="selectTopProducts" resultType="com.fireworks.model.vo.AdminHomeStatisticsVO$TopProductVO">
+        SELECT
+            oi.product_id AS productId,
+            oi.product_title AS productTitle,
+            oi.product_image AS productImage,
+            SUM(oi.quantity) AS totalSales
+        FROM oms_order_item oi
+        JOIN oms_order o ON oi.order_id = o.id
+        <where>
+            o.deleted = 0
+            AND o.order_status IN (1,4)
+            <if test="param.startTime != null and param.startTime != ''">
+                AND o.create_time &gt;= CONCAT(#{param.startTime}, ' 00:00:00')
+            </if>
+            <if test="param.endTime != null and param.endTime != ''">
+                AND o.create_time &lt;= CONCAT(#{param.endTime}, ' 23:59:59')
+            </if>
+        </where>
+        GROUP BY oi.product_id, oi.product_title, oi.product_image
+        ORDER BY totalSales DESC
+        LIMIT 5
+    </select>
+
+    <select id="selectSalesTrend" resultType="com.fireworks.model.vo.AdminHomeStatisticsVO$SalesTrendVO">
+        SELECT
+            DATE_FORMAT(o.create_time, '%Y-%m-%d') AS date,
+            IFNULL(SUM(o.pay_amount), 0) AS amount
+        FROM oms_order o
+        <where>
+            o.deleted = 0
+            AND o.order_status IN (1,4)
+            <if test="param.startTime != null and param.startTime != ''">
+                AND o.create_time &gt;= CONCAT(#{param.startTime}, ' 00:00:00')
+            </if>
+            <if test="param.endTime != null and param.endTime != ''">
+                AND o.create_time &lt;= CONCAT(#{param.endTime}, ' 23:59:59')
+            </if>
+        </where>
+        GROUP BY DATE_FORMAT(o.create_time, '%Y-%m-%d')
+        ORDER BY date ASC
+    </select>
+
+    <select id="selectRecentOrders" resultType="com.fireworks.model.vo.AdminHomeStatisticsVO$RecentOrderVO">
+        SELECT
+            o.order_no AS orderNo,
+            o.order_status AS orderStatus,
+            IFNULL(o.total_amount, 0) AS totalAmount,
+            IFNULL(o.pay_amount, 0) AS payAmount,
+            o.create_time AS createTime
+        FROM oms_order o
+        WHERE o.deleted = 0
+        ORDER BY o.create_time DESC
+        LIMIT 10
+    </select>
+
+</mapper>

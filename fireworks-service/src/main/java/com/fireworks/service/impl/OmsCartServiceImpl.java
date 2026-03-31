@@ -29,12 +29,21 @@ import java.util.concurrent.TimeUnit;
  * 购物车业务实现。
  * <p>
  * 读：Redis 优先，miss 则查 MySQL 并预热 Redis。<br>
- * 写：先更新 Redis，再通过 RocketMQ 顺序消息异步落库 MySQL，保证最终一致性。
- * 同一用户的消息路由到同一 MessageQueue，Consumer 串行消费，落库顺序与 Redis 操作顺序一致。
+ * 写：先同步落库 MySQL，再更新 Redis（与 Redis 非同事务；DB 为持久化事实来源）。
+ * Redis 写入失败时重试一次，仍失败则删除该用户 cart key，避免 list() 长期脏读。
+ * Redis 写路径统一捕获 {@link Exception}（含受检异常与运行时异常），不捕获 {@link Error}。
  * </p>
  */
 @Service
 public class OmsCartServiceImpl implements OmsCartService {
+
+    /**
+     * DB 已成功后的 Redis 写操作（可能抛出 Spring Data、序列化等受检或运行时异常）。
+     */
+    @FunctionalInterface
+    private interface RedisCartWrite {
+        void run() throws Exception;
+    }
 
     private static final Logger log = LoggerFactory.getLogger(OmsCartServiceImpl.class);
 
@@ -42,19 +51,24 @@ public class OmsCartServiceImpl implements OmsCartService {
     private static final int DEFAULT_LIMIT = 99;
 
     private final CartRedisHelper cartRedisHelper;
+    /** 保留注入，恢复 MQ 异步落库时取消注释 {@code OmsCartServiceImpl} 内发送调用即可 */
+    @SuppressWarnings("unused")
     private final CartMqProducer mqProducer;
     private final OmsCartItemMapper cartItemMapper;
+    private final OmsCartItemPersistenceService cartItemPersistenceService;
     private final PmsProductMapper productMapper;
     private final RedissonClient redissonClient;
 
     public OmsCartServiceImpl(CartRedisHelper cartRedisHelper,
                               CartMqProducer mqProducer,
                               OmsCartItemMapper cartItemMapper,
+                              OmsCartItemPersistenceService cartItemPersistenceService,
                               PmsProductMapper productMapper,
                               RedissonClient redissonClient) {
         this.cartRedisHelper = cartRedisHelper;
         this.mqProducer = mqProducer;
         this.cartItemMapper = cartItemMapper;
+        this.cartItemPersistenceService = cartItemPersistenceService;
         this.productMapper = productMapper;
         this.redissonClient = redissonClient;
     }
@@ -102,9 +116,8 @@ public class OmsCartServiceImpl implements OmsCartService {
                 throw new IllegalArgumentException("商品已下架");
             }
 
-            // 锁保护内：读-计算-校验-写 串行执行，保证并发下数量准确
-            CartItemEntry existing = cartRedisHelper.getItem(userId, productId);
-            int currentQty = (existing != null) ? existing.getQuantity() : 0;
+            // 锁内：当前数量以 Redis 为准，miss 则读 DB（避免仅 DB 有行时从 0 加起）
+            int currentQty = resolveCurrentQuantity(userId, productId);
             int newQty = currentQty + addQty;
 
             // 库存校验
@@ -124,12 +137,18 @@ public class OmsCartServiceImpl implements OmsCartService {
             CartItemEntry entry = new CartItemEntry(
                     newQty, product.getPrice(), product.getTitle(), imageSnapshot);
 
-            // 1. 写 Redis
-            cartRedisHelper.setItem(userId, productId, entry);
-
-            // 2. 发送顺序消息，由 Consumer 落库 MySQL
-            mqProducer.sendUpsert(userId, productId, newQty,
+            // 1. 同步落库 MySQL（@Transactional 在 OmsCartItemPersistenceService）
+            cartItemPersistenceService.upsert(userId, productId, newQty,
                     product.getPrice(), product.getTitle(), imageSnapshot);
+
+            // 2. 写 Redis（失败重试后仍失败则 invalidate，避免 list() 长期不读库）
+            syncRedisSetItemAfterDb(userId, productId, entry);
+
+            /*
+             * 因当前业务量较少直接同步落库即可，后续业务量增加再考虑使用 MQ 异步落库
+             * mqProducer.sendUpsert(userId, productId, newQty,
+             *         product.getPrice(), product.getTitle(), imageSnapshot);
+             */
 
             log.info("加购成功, userId={}, productId={}, newQty={}", userId, productId, newQty);
 
@@ -176,12 +195,16 @@ public class OmsCartServiceImpl implements OmsCartService {
         CartItemEntry entry = new CartItemEntry(
                 newQty, product.getPrice(), product.getTitle(), imageSnapshot);
 
-        // 1. 写 Redis
-        cartRedisHelper.setItem(userId, productId, entry);
-
-        // 2. 发送顺序消息，由 Consumer 落库 MySQL
-        mqProducer.sendUpsert(userId, productId, newQty,
+        cartItemPersistenceService.upsert(userId, productId, newQty,
                 product.getPrice(), product.getTitle(), imageSnapshot);
+
+        syncRedisSetItemAfterDb(userId, productId, entry);
+
+        /*
+         * 因当前业务量较少直接同步落库即可，后续业务量增加再考虑使用 MQ 异步落库
+         * mqProducer.sendUpsert(userId, productId, newQty,
+         *         product.getPrice(), product.getTitle(), imageSnapshot);
+         */
 
         log.debug("修改数量成功, userId={}, productId={}, newQty={}", userId, productId, newQty);
     }
@@ -194,11 +217,14 @@ public class OmsCartServiceImpl implements OmsCartService {
     public void remove(Long userId, CartRemoveParam param) {
         Long productId = param.getProductId();
 
-        // 1. 删 Redis
-        cartRedisHelper.removeItem(userId, productId);
+        cartItemPersistenceService.deleteItem(userId, productId);
 
-        // 2. 发送顺序消息，由 Consumer 落库 MySQL
-        mqProducer.sendDelete(userId, productId);
+        syncRedisRemoveItemAfterDb(userId, productId);
+
+        /*
+         * 因当前业务量较少直接同步落库即可，后续业务量增加再考虑使用 MQ 异步落库
+         * mqProducer.sendDelete(userId, productId);
+         */
 
         log.debug("删除购物车单项成功, userId={}, productId={}", userId, productId);
     }
@@ -209,11 +235,14 @@ public class OmsCartServiceImpl implements OmsCartService {
 
     @Override
     public void clear(Long userId) {
-        // 1. 清 Redis
-        cartRedisHelper.clear(userId);
+        cartItemPersistenceService.clearUser(userId);
 
-        // 2. 发送顺序消息，由 Consumer 落库 MySQL
-        mqProducer.sendClear(userId);
+        syncRedisClearAfterDb(userId);
+
+        /*
+         * 因当前业务量较少直接同步落库即可，后续业务量增加再考虑使用 MQ 异步落库
+         * mqProducer.sendClear(userId);
+         */
 
         log.debug("清空购物车成功, userId={}", userId);
     }
@@ -221,6 +250,60 @@ public class OmsCartServiceImpl implements OmsCartService {
     // ─────────────────────────────────────────────
     // 私有方法
     // ─────────────────────────────────────────────
+
+    /**
+     * Redis 无该项时从 DB 读当前件数，保证加购基数正确。
+     */
+    private int resolveCurrentQuantity(Long userId, Long productId) {
+        CartItemEntry redis = cartRedisHelper.getItem(userId, productId);
+        if (redis != null) {
+            return redis.getQuantity();
+        }
+        OmsCartItem row = cartItemMapper.selectOne(
+                new LambdaQueryWrapper<OmsCartItem>()
+                        .eq(OmsCartItem::getUserId, userId)
+                        .eq(OmsCartItem::getProductId, productId));
+        if (row == null) {
+            return 0;
+        }
+        return row.getQuantity();
+    }
+
+    private void syncRedisSetItemAfterDb(Long userId, Long productId, CartItemEntry entry) {
+        executeRedisCartWriteWithRetry(userId, productId,
+                () -> cartRedisHelper.setItem(userId, productId, entry));
+    }
+
+    private void syncRedisRemoveItemAfterDb(Long userId, Long productId) {
+        executeRedisCartWriteWithRetry(userId, productId,
+                () -> cartRedisHelper.removeItem(userId, productId));
+    }
+
+    private void syncRedisClearAfterDb(Long userId) {
+        executeRedisCartWriteWithRetry(userId, null, () -> cartRedisHelper.clear(userId));
+    }
+
+    /**
+     * Redis 写失败重试一次；仍失败则 invalidate，避免 list() 在非空 Redis 下长期不读库。
+     * 使用 {@code Exception} 而非仅 {@code RuntimeException}，避免受检异常穿透导致无法删 key。
+     */
+    private void executeRedisCartWriteWithRetry(Long userId, Long productIdOrNull, RedisCartWrite write) {
+        try {
+            write.run();
+        } catch (Exception e) {
+            if (productIdOrNull != null) {
+                log.warn("购物车 Redis 操作失败，将重试一次, userId={}, productId={}", userId, productIdOrNull, e);
+            } else {
+                log.warn("购物车 Redis 操作失败，将重试一次, userId={}", userId, e);
+            }
+            try {
+                write.run();
+            } catch (Exception e2) {
+                log.warn("购物车 Redis 重试仍失败，将删除 cart key 以强制下次从 DB 加载, userId={}", userId, e2);
+                cartRedisHelper.invalidateUserCart(userId);
+            }
+        }
+    }
 
     /**
      * 从 MySQL 加载购物车并预热 Redis，返回条目 Map。

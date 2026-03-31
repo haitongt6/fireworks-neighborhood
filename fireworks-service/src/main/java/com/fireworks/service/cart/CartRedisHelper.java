@@ -138,6 +138,14 @@ public class CartRedisHelper {
         stringRedisTemplate.delete(buildKey(userId));
     }
 
+    /**
+     * 删除用户购物车 Redis Key（与 {@link #clear} 相同），用于 DB 已成功但 Redis 写入失败时，
+     * 强制下次 {@code list()} 走空 Map 并从 MySQL 回源，避免长期脏读。
+     */
+    public void invalidateUserCart(Long userId) {
+        stringRedisTemplate.delete(buildKey(userId));
+    }
+
     // ─────────────────────────────────────────────
     // 私有工具
     // ─────────────────────────────────────────────

@@ -33,10 +33,27 @@ public class OrderExpireScheduler {
     private static final DefaultRedisScript<List> POP_MIN_SCRIPT = new DefaultRedisScript<>();
 
     static {
+        /*
+         * Lua 脚本：从有序集合中原子地「取出并删除」score 最小的一条（等价于 Redis 5+ 的 ZPOPMIN，但兼容 Redis 3/4）。
+         *
+         * KEYS[1]：有序集合 key，本任务中为 ORDER_EXPIRE_ZSET，member=订单号，score=到期时间戳(ms)。
+         *
+         * 逐行说明（Lua 语法）：
+         * 1) ZRANGE key 0 0 WITHSCORES
+         *    - 按 score 升序取排名第 0 的一条，即当前 score 最小的 member。
+         *    - WITHSCORES 使返回为扁平数组：[member1, score1, member2, score2, ...]，此处只有一条，故 z[1]=member，z[2]=score。
+         * 2) 若集合为空，#z==0，返回 nil；Java 侧得到 null，循环结束。
+         * 3) ZREM 从同一 key 中删除该 member，与上一步在同一次脚本执行中完成，保证原子性，避免并发下重复处理或丢失。
+         * 4) return {z[1], z[2]} 将 [订单号, 分数字符串] 返回给 Java；setResultType(List.class) 对应 List<Object>。
+         */
         POP_MIN_SCRIPT.setScriptText(
-                "local z = redis.call('ZRANGE', KEYS[1], 0, 0, 'WITHSCORES')\n"
+                "-- KEYS[1]: ZSET，member=订单号，score=到期时间戳\n"
+                        + "local z = redis.call('ZRANGE', KEYS[1], 0, 0, 'WITHSCORES')\n"
+                        + "-- 空集合：无最小元可弹\n"
                         + "if #z == 0 then return nil end\n"
+                        + "-- 原子删除该 member，等价于 ZPOPMIN 的弹出效果\n"
                         + "redis.call('ZREM', KEYS[1], z[1])\n"
+                        + "-- 返回 [member, score]，供 Java 判断是否到期并关单\n"
                         + "return {z[1], z[2]}");
         POP_MIN_SCRIPT.setResultType(List.class);
     }

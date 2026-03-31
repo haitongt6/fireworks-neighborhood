@@ -262,6 +262,7 @@ public class OmsOrderServiceImpl implements OmsOrderService {
         List<OmsOrderItem> orderItems = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
         int itemCount = 0;
+        //设置过期时间为十五分钟，若订单超过15分钟未支付，由定时任务关闭订单并释放库存(com.fireworks.service.order.OrderExpireScheduler.closeExpiredOrders)
         Date expireTime = new Date(System.currentTimeMillis() + ORDER_EXPIRE_MILLIS);
         String orderNo = orderNoGenerator.generateOrderNo();
         for (OrderItemSubmitParam item : submitItems) {

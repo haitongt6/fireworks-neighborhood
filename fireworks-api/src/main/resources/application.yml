@@ -60,7 +60,7 @@ order:
 # access-key-id 与 access-key-secret 必须通过环境变量或 application-local.yml 注入，切勿提交到仓库
 aliyun:
   sms:
-    access-key-id: ${code}
-    access-key-secret: ${min}
+    access-key-id: ${key}
+    access-key-secret: ${secret}
     sign-name: 速通互联验证码
     template-code: 100001

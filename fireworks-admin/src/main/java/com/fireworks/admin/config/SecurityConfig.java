@@ -85,6 +85,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             // 禁用 CSRF（REST API 场景无需）
             .csrf().disable()
 
+            // 与 WebConfig 中 CorsConfigurationSource 一致，放行跨域预检与带凭证请求
+            .cors().and()
+
             // 禁用 Session，完全依赖 JWT
             .sessionManagement()
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
