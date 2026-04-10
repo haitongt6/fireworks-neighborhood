@@ -11,6 +11,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /**
  * C 端 API 全局异常处理器。
@@ -71,5 +72,11 @@ public class GlobalExceptionHandler {
     public Result<?> handleException(Exception e) {
         log.error("系统异常", e);
         return Result.failed("系统繁忙，请稍后重试");
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public Result<?> handleNumberFormatException(MethodArgumentTypeMismatchException e){
+        log.error("参数类型不匹配异常", e);
+        return Result.failed(e.getMessage());
     }
 }

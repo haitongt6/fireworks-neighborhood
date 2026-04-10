@@ -59,6 +59,8 @@ public class ApiSecurityConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers(HttpMethod.GET, "/api/product/**").permitAll()
                 .antMatchers(HttpMethod.GET, "/file/**").permitAll()
                 .antMatchers(HttpMethod.OPTIONS).permitAll()
+                // JVM 本地演练（无鉴权，生产环境请通过网关/防火墙屏蔽）
+                .antMatchers("/api/internal/jvm-practice/**").permitAll()
                 // 需要认证的接口
                 .antMatchers("/api/member/**").authenticated()
                 .antMatchers("/api/cart/**").authenticated()
